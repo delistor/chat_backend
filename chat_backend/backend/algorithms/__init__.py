@@ -1,0 +1,1 @@
+# AlgoChat Algorithms Package — auto-discovered by algochat_base
