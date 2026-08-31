@@ -1,0 +1,1445 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>三大 Agent 完整框架实现蓝图 · Claude Code / OpenClaw / dsh（照着实现级）</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--panel2:#1c2333;--border:#30363d;--text:#e6edf3;--muted:#8b949e;--accent:#58a6ff;--green:#3fb950;--purple:#bc8cff;--orange:#f0883e;--pink:#ff7b72;--yellow:#e3b341;--cyan:#39c5cf;--code-bg:#0a0e14}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.8}
+  .layout{display:flex;max-width:1600px;margin:0 auto}
+  nav{width:310px;position:sticky;top:0;height:100vh;overflow-y:auto;padding:24px 14px;border-right:1px solid var(--border);flex-shrink:0;font-size:12.5px;scrollbar-width:thin}
+  nav h3{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin:16px 0 6px}
+  nav a{display:block;color:var(--muted);text-decoration:none;padding:4px 10px;border-radius:6px}
+  nav a:hover{color:var(--text);background:var(--panel)}
+  main{flex:1;padding:44px 52px;min-width:0;max-width:1280px}
+  h1{font-size:32px;margin-bottom:8px}h1 span{color:var(--accent)}
+  .subtitle{color:var(--muted);margin-bottom:8px;font-size:14px}
+  .badge{display:inline-block;background:rgba(63,185,80,.12);color:var(--green);border:1px solid rgba(63,185,80,.4);font-size:12px;padding:2px 10px;border-radius:999px;margin:4px 4px 12px 0}
+  h2{font-size:25px;margin:64px 0 18px;padding-bottom:10px;border-bottom:1px solid var(--border);scroll-margin-top:16px}
+  h2 .tag{font-size:12px;font-weight:500;padding:3px 10px;border-radius:999px;vertical-align:middle;margin-left:10px}
+  h3{font-size:18px;margin:32px 0 10px;color:var(--accent)}
+  h4{font-size:14.5px;margin:22px 0 8px;color:var(--purple)}
+  p{margin:10px 0;color:#c9d1d9}
+  ul,ol{margin:10px 0 10px 24px;color:#c9d1d9}li{margin:5px 0}
+  code{font-family:"Cascadia Code",Consolas,monospace;background:var(--panel2);padding:2px 6px;border-radius:4px;font-size:13px;color:var(--pink)}
+  pre{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:16px 18px;overflow-x:auto;margin:14px 0;font-size:12.5px;line-height:1.6}
+  pre code{background:none;padding:0;color:#c9d1d9;white-space:pre}
+  .cm{color:#6a9955}.kw{color:#569cd6}.st{color:#ce9178}.fn{color:#dcdcaa}.nu{color:#b5cea8}
+  .src-line{color:var(--yellow);font-size:11px;display:block;margin-bottom:6px;opacity:.9}
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px}
+  th,td{border:1px solid var(--border);padding:9px 12px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);font-weight:600}td{color:#c9d1d9}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin:14px 0}
+  .card .card-title{font-weight:600;color:var(--accent);margin-bottom:8px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  @media(max-width:1200px){.grid2,.grid3{grid-template-columns:1fr}nav{display:none}}
+  .cc{color:var(--orange)}.oc{color:var(--green)}.ds{color:var(--accent)}
+  .flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px;margin:14px 0;font-size:12.5px}
+  .flow .step{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:8px 12px}
+  .flow .arrow{color:var(--muted);align-self:center}
+  .note{border-left:3px solid var(--yellow);background:rgba(227,179,65,.07);padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0;font-size:14px}
+  .note b{color:var(--yellow)}
+  .good{border-left-color:var(--green);background:rgba(63,185,80,.07)}.good b{color:var(--green)}
+  .beginner{border-left:3px solid var(--cyan);background:rgba(57,197,207,.07);padding:12px 18px;border-radius:0 8px 8px 0;margin:16px 0;font-size:14.5px}
+  .beginner::before{content:"🌱 ";color:var(--cyan);font-weight:700}
+  .beginner b{color:var(--cyan)}
+  .impl{border-left:3px solid var(--green);background:rgba(63,185,80,.06);padding:14px 18px;border-radius:0 8px 8px 0;margin:18px 0;font-size:14px}
+  .impl::before{content:"🛠 照抄清单 · ";color:var(--green);font-weight:700}
+  .impl ul{margin:6px 0 0 20px}
+  a.src{color:var(--accent);text-decoration:none;font-size:12.5px}a.src:hover{text-decoration:underline}
+  .filetree{font-family:Consolas,monospace;font-size:12.5px;white-space:pre;overflow-x:auto}
+  .filetree .dir{color:var(--accent);font-weight:600}.filetree .c{color:var(--muted)}
+  blockquote{border-left:3px solid var(--purple);background:rgba(188,140,255,.06);padding:10px 16px;margin:12px 0;color:#d8ccb8;font-size:13.5px;border-radius:0 8px 8px 0}
+  blockquote p{margin:4px 0}
+  .pagebreak{margin:70px 0 0;border-top:1px dashed var(--border);position:relative}
+  .pagebreak::before{content:attr(data-label);position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--bg);padding:0 16px;color:var(--muted);font-size:12px}
+  footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--border);color:var(--muted);font-size:12px}
+  .ascii{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;overflow-x:auto;font-family:Consolas,monospace;font-size:11.5px;line-height:1.5;color:#9ecbff;white-space:pre}
+  .codeview{margin:16px 0}
+  .cv-bar{display:flex;align-items:center;gap:0;border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;background:var(--panel);overflow:hidden}
+  .cv-bar .cv-title{padding:6px 12px;font-size:12px;color:var(--muted);font-family:Consolas,monospace;flex:1;border-right:1px solid var(--border)}
+  .cv-bar button{background:none;border:none;color:var(--muted);font-size:12px;padding:6px 14px;cursor:pointer;font-family:inherit;border-left:1px solid var(--border)}
+  .cv-bar button.on{background:var(--panel2);color:var(--text);font-weight:600}
+  .cv-bar button:hover{color:var(--text)}
+  .codeview pre{margin:0;border-radius:0 0 8px 8px}
+  .codeview pre[hidden]{display:none}
+  .mod{background:linear-gradient(135deg,rgba(88,166,255,.08),rgba(188,140,255,.06));border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin:12px 0}
+  .mod .mod-title{font-weight:700;font-size:15px}
+  .mod .mod-meta{font-size:12px;color:var(--muted);margin:2px 0 8px;font-family:Consolas,monospace}
+
+/* —— 平铺双视图覆盖（无脚本，代码始终可见）—— */
+.codeview{border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.codeview pre{margin:0;border:none;border-radius:0}
+.cv-bar{border-radius:0;border-left:none;border-right:none;border-top:none;border-bottom:1px solid var(--border)}
+.cv-bar button{display:none}
+.cv-pseudo-bar{border-top:1px solid var(--border);background:var(--panel2)}
+.cv-pseudo-bar .cv-title{color:var(--purple)}
+.codeview-inner{border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;background:var(--code-bg)}
+.codeview-inner pre{border:none;margin:0;border-radius:0 0 8px 8px}
+
+/* —— 纯 CSS 源码⇄伪代码切换（radio + label，无 JS）—— */
+.codeview input[type=radio]{display:none}
+.cv-bar label{cursor:pointer;font-size:12px;padding:6px 14px;color:var(--muted);border-left:1px solid var(--border);user-select:none}
+.cv-bar label:hover{color:var(--text);background:var(--panel2)}
+.codeview input:nth-of-type(1):checked ~ .cv-bar label:nth-of-type(1),
+.codeview input:nth-of-type(2):checked ~ .cv-bar label:nth-of-type(2){background:var(--panel2);color:var(--text);font-weight:600}
+.codeview pre.cv{display:none}
+.codeview input:nth-of-type(1):checked ~ pre.src{display:block}
+.codeview input:nth-of-type(2):checked ~ pre.pseudo{display:block}
+
+/* —— 纯 CSS 源码⇄伪代码切换（radio + label，无 JS）—— */
+.cvtoggle input[type=radio]{display:none}
+.cvtoggle .cv-bar label{cursor:pointer;font-size:12px;padding:6px 14px;color:var(--muted);border-left:1px solid var(--border);user-select:none}
+.cvtoggle .cv-bar label:hover{color:var(--text);background:var(--panel2)}
+.cvtoggle input:nth-of-type(1):checked ~ .cv-bar label:nth-of-type(1),
+.cvtoggle input:nth-of-type(2):checked ~ .cv-bar label:nth-of-type(2){background:var(--panel2);color:var(--text);font-weight:600}
+.cvtoggle pre.cv{display:none}
+.cvtoggle input:nth-of-type(1):checked ~ pre.src{display:block}
+.cvtoggle input:nth-of-type(2):checked ~ pre.pseudo{display:block}
+</style>
+</head>
+<body>
+<div class="layout">
+<nav>
+  <h3>第〇部分 · 总纲</h3>
+  <a href="#p0">本蓝图怎么用</a>
+  <a href="#anatomy">Agent 框架解剖图</a>
+  <a href="#common">三家共同的八个模块</a>
+  <a href="#reading">读图约定与复用资产</a>
+  <h3>A · Claude Code 蓝图</h3>
+  <a href="#a1">A1 全景与启动</a>
+  <a href="#a2">A2 查询主循环</a>
+  <a href="#a3">A3 上下文组装</a>
+  <a href="#a4">A4 工具系统</a>
+  <a href="#a5">A5 权限系统</a>
+  <a href="#a6">A6 子代理与 Fork</a>
+  <a href="#a7">A7 Hooks 系统</a>
+  <a href="#a8">A8 Skills 与命令</a>
+  <a href="#a9">A9 会话与 Transcript</a>
+  <a href="#a10">A10 UI/MCP/远程/配置</a>
+  <a href="#a-mvp">A11 最小可复刻闭环</a>
+  <h3>B · OpenClaw 蓄图</h3>
+  <a href="#b1">B1 全景与核心/插件边界</a>
+  <a href="#b2">B2 Gateway 架构</a>
+  <a href="#b3">B3 渠道与入站管线</a>
+  <a href="#b4">B4 路由与会话键</a>
+  <a href="#b5">B5 Agent Runtime 回合</a>
+  <a href="#b6">B6 Session 子系统</a>
+  <a href="#b7">B7 工具与权限沙箱</a>
+  <a href="#b8">B8 插件系统</a>
+  <a href="#b9">B9 Cron/Heartbeat</a>
+  <a href="#b10">B10 配置/多Agent/UI</a>
+  <a href="#b-mvp">B11 最小可复刻骨架</a>
+  <h3>C · dsh 蓝图</h3>
+  <a href="#c1">C1 Monorepo 包地图</a>
+  <a href="#c2">C2 Cordis 微内核</a>
+  <a href="#c3">C3 组合即补丁/预设</a>
+  <a href="#c4">C4 Agent 运行时</a>
+  <a href="#c5">C5 事件溯源会话</a>
+  <a href="#c6">C6 工具系统</a>
+  <a href="#c7">C7 LLM 层与 KV-cache</a>
+  <a href="#c8">C8 上下文提供者</a>
+  <a href="#c9">C9 压缩/溢出/存储</a>
+  <a href="#c10">C10 UI/native/python</a>
+  <a href="#c-mvp">C11 最小可复刻蓝图</a>
+  <h3>E · Hermes 蓝图</h3>
+  <a href="#e1">E1 形态与入口</a>
+  <a href="#e2">E2 Agent 循环</a>
+  <a href="#e3">E3 三层 System Prompt</a>
+  <a href="#e4">E4 工具注册表</a>
+  <a href="#e5">E5 状态与压缩</a>
+  <a href="#e6">E6 学习回路</a>
+  <a href="#e7">E7 Providers 与认证</a>
+  <a href="#e8">E8 委派/配置/UI</a>
+  <a href="#e-mvp">E9 最小可复刻五支柱</a>
+  <h3>D · 终极对比</h3>
+  <a href="#d1">架构哲学对比</a>
+  <a href="#d2">逐模块对照表</a>
+  <a href="#d3">关键机制横向对比</a>
+  <a href="#d4">事件/钩子体系对照</a>
+  <a href="#d8">四家学习回路对比</a>
+  <a href="#d5">Hermes 速览</a>
+  <a href="#d6">照抄路线图 M0-M5</a>
+  <a href="#d7">选型决策树</a>
+  <a href="#appendix">附录：术语与文件索引</a>
+</nav>
+
+<main>
+<h1>三大 Agent <span>完整框架</span>实现蓝图</h1>
+<p class="subtitle">Claude Code（去混淆源码）· OpenClaw（多渠道个人助理）· dsh（DeepSeek 微内核框架）—— 逐模块拆到「照着能写出来」的粒度，最后同台对比</p>
+<span class="badge">✓ 全部基于本地克隆仓库实际源码（文件:行号 可直接打开验证）</span>
+<span class="badge">✓ 每模块含：职责 / 数据流 / 关键代码（源码⇄伪代码） / 照抄清单</span>
+<span class="badge">✓ 终章：三架构逐模块对照 + M0-M5 实现路线图 + 决策树</span>
+
+<!-- ================================================================ -->
+<h2 id="p0">第〇部分 · 总纲</h2>
+
+<h3 id="anatomy">0.1 先看全景：一个 Agent 框架到底由什么组成</h3>
+<p>剥掉所有花哨功能，任何 LLM Agent 框架都是同一个骨架的变奏：<b>一个循环、两类扩展点、三份状态</b>。三个项目用完全不同的哲学实现了这同一样东西：</p>
+<div class="ascii">                    ┌─────────────────────────────────────────────────┐
+                    │              ① 主循环（The Loop）                 │
+                    │  用户输入 → 上下文组装 → LLM 流式 → 解析工具调用    │
+                    │  → 权限判定 → 执行工具 → 结果回填 → 附件注入 → 循环  │
+                    └─────────────────────────────────────────────────┘
+                                        ▲
+        ┌───────────────┬───────────────┼────────────────┬─────────────────┐
+        │               │               │                │                 │
+  ② 模型抽象层    ③ 工具系统       ④ 上下文管理      ⑤ 会话/持久化    ⑥ 记忆/检索
+  (provider/流式/  (注册表/schema/  (system prompt/   (transcript/     (长期记忆/
+   重试/计费)      权限/并发)       注入槽位/压缩)     resume/fork)      召回/巩固)
+        │               │               │                │                 │
+        └───────────────┴───────┬───────┴────────────────┴─────────────────┘
+                                │
+                    ┌───────────▼───────────────────────────────────────┐
+                    │  ⑦ 扩展机制（一切外围能力的挂载点）                  │
+                    │     Claude Code: hooks + plugins + MCP + skills   │
+                    │     OpenClaw:  180 个 extension + plugin-sdk      │
+                    │     dsh:       cordis 插件 + waterfall 事件        │
+                    └───────────────────────────────────────────────────┘
+                                │
+                    ┌───────────▼───────────────────────────────────────┐
+                    │  ⑧ 呈现层（人看到什么）                             │
+                    │     CC: React/Ink 终端 UI    OC: Web+原生App+渠道  │
+                    │     dsh: Web UI（从会话投影派生）                   │
+                    └───────────────────────────────────────────────────┘</div>
+<div class="beginner">读这三份蓝图时反复问三个问题：<b>① 循环在哪里、每一步做什么？② 状态存在哪、怎么恢复？③ 扩展点长什么样、能挂什么？</b>能回答这三个问题，任何 Agent 框架你都能两周上手。</div>
+
+<h3 id="common">0.2 三家共同的八个模块（先建立坐标系）</h3>
+<table>
+<tr><th>模块</th><th class="cc">Claude Code</th><th class="oc">OpenClaw</th><th class="ds">dsh</th></tr>
+<tr><td>主循环</td><td><code>query.ts queryLoop()</code> async generator</td><td><code>packages/agent-core agent-loop.ts</code> + embedded runner</td><td><code>core/agent-loop ReactLoopAgent.turn()/step()</code></td></tr>
+<tr><td>模型抽象</td><td>callModel deps + fallbackModel</td><td>provider extensions（anthropic/openai/…）</td><td><code>ctx.llm</code> 适配器注册表 + LlmAdapter</td></tr>
+<tr><td>工具系统</td><td><code>Tool</code> 接口 + tool pool + 并发编排</td><td><code>AnyAgentTool</code> + 策略管线过滤</td><td><code>ctx.tools</code> + 事件管线 + PTC 模式</td></tr>
+<tr><td>上下文管理</td><td>prependUserContext + attachments + 7 种压缩</td><td>buildSystemPrompt + attempt 组装 + flush</td><td>systemPrompt.assemble + context 包族 + compaction</td></tr>
+<tr><td>会话持久化</td><td>JSONL transcript（parentUuid 链）+ sidechain</td><td>SQLite session_nodes/windows + writer-claim</td><td>事件溯源 JSONL+zstd + surface 投影</td></tr>
+<tr><td>记忆</td><td>memdir + extract fork + auto-dream</td><td>memory-core（SQLite 混合检索+dreaming）</td><td>（外包插件：agent-instructions 只管指令）</td></tr>
+<tr><td>扩展机制</td><td>28 种 hooks + 插件市场 + MCP + skills</td><td>openclaw.plugin.json + register(api) 能力注册</td><td>cordis apply(ctx) + waterfall 事件 + patch.yml</td></tr>
+<tr><td>呈现</td><td>React/Ink REPL（6684 行）</td><td>WebChat/Control UI + iOS/macOS 原生</td><td>Web UI（projection 快照派生）</td></tr>
+</table>
+
+<h3 id="reading">0.3 三份蓝图各自的「一句话灵魂」</h3>
+<div class="grid3">
+<div class="card"><div class="card-title cc">Claude Code：单体即性能</div>一个 2057 行的 async generator 循环装下一切；所有外围（hooks/skills/MCP/插件）都是这个循环的<b>正交扩展点</b>。设计目标是<b>交互延迟与缓存命中</b>——流式期间就开跑工具、fork 共享父缓存、附件只在尾部追加。适合学「怎么把一个循环做到工业级」。</div>
+<div class="card"><div class="card-title oc">OpenClaw：网关即产品</div>核心是一个<b>常驻 Gateway</b>（单端口 WS+HTTP，18789）接管所有消息渠道；agent 只是它调度的资源之一。设计目标是<b>7×24 常驻、多渠道、多 agent 路由</b>——会话键语法、dmScope 隔离、cron/heartbeat 都是围绕「消息从哪来、回到哪去」。适合学「怎么把 agent 做成在线服务」。</div>
+<div class="card"><div class="card-title ds">dsh：组合即数据</div>内核只有「插件容器 + 事件溯源会话」两样；<b>整个产品是一叠 YAML 补丁组合出来的</b>（bundle→profile→home→overlay），甚至有一个 preset 让模型自己写 TS 程序代替逐个调工具。设计目标是<b>可组合、可重放、可自改</b>。适合学「怎么把框架做成平台」。</div>
+</div>
+
+<div class="pagebreak" data-label="—— Part A ——"></div>
+
+<!-- ================================================================ -->
+<h2 id="a1">A1 · Claude Code 全景与启动 <span class="tag" style="background:rgba(240,136,62,.15);color:var(--orange)">claude-code-src</span></h2>
+
+<div class="mod"><div class="mod-title">A1.1 形态</div><div class="mod-meta">Bun 打包 TypeScript 单体 · React/Ink 终端 UI · feature() 编译期死代码消除</div>
+<p>整体形态是一个<b>巨大的单体</b>：main.tsx 5640 行、REPL.tsx 6684 行、hooks.ts 5190 行、sessionStorage.ts 5247 行。没有插件目录级别的内核拆分——一切通过 hooks/skills/MCP/plugins 四个扩展面挂载。</p></div>
+
+<h3>A1.2 启动链</h3>
+<div class="flow">
+<span class="step">entrypoints/cli.tsx<br><small>bun shebang + 性能 shim</small></span><span class="arrow">→</span>
+<span class="step">main.tsx main()<br><small>L743：防 PATH 劫持、cc:// URL 重写、deep link、ssh 剥离</small></span><span class="arrow">→</span>
+<span class="step">Commander 构建<br><small>L1082：~150 个 option</small></span><span class="arrow">→</span>
+<span class="step">主 action L1434<br><small>settings→tools→setup→commands→plugins→agents→MCP</small></span><span class="arrow">→</span>
+<span class="step">headless? L3371<br><small>runHeadless(maxTurns/budget)</small></span><span class="arrow">→</span>
+<span class="step">交互: initialState<br><small>replLauncher → renderAndRun(&lt;App&gt;&lt;REPL/&gt;)</small></span>
+</div>
+<div class="codeview cvtoggle"><input type="radio" name="cv1" id="cv1-s" checked><input type="radio" name="cv1" id="cv1-p"><div class="cv-bar"><span class="cv-title">src/replLauncher.tsx:14-31 · UI 挂载</span><label for="cv1-s">源码</label><label for="cv1-p">伪代码</label></div><pre class="cv src"><code><span class="kw">await</span> renderAndRun(root,
+  &lt;SentryErrorBoundary name=<span class="st">"RootREPLBoundary"</span>&gt;
+    &lt;App {...appProps}&gt;
+      &lt;REPL {...replProps} /&gt;
+    &lt;/App&gt;
+  &lt;/SentryErrorBoundary&gt;)</code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · 启动总体流程</span>
+启动():
+    并行预热: MDM 子进程读取 / macOS 钥匙串预取   <span class="c">// 顶部副作用, 不等结果</span>
+    设置 NoDefaultCurrentDirectoryInExePath        <span class="c">// 防 PATH 劫持</span>
+    解析 argv: cc:// 直连URL / deep link / ssh 子命令 / assistant 模式
+    program = Commander(~150 个选项)
+    主action:
+        依次加载: 设置 → 工具池 → setup() → 命令 → 插件 → agents → MCP 连接
+        若 headless 模式: runHeadless(maxTurns, budget, forkSession)
+        否则: 组装 AppState → 渲染 &lt;REPL/&gt;(React/Ink)
+setup():
+    Node>=18 检查; 切换会话; 起 UDS 消息服务(导出 socket 路径)
+    setCwd → 捕获 hooks 配置快照(防隐藏 hook 中途修改) → 启动文件变更 watcher</code></pre></div>
+
+<h3>A1.3 关键启动细节（值得抄的三个）</h3>
+<ul>
+<li><b>并行预热</b>：钥匙串/MDM 读取在 main.tsx 顶部以副作用启动，不阻塞主路径——冷启动优化范本。</li>
+<li><b>hooks 配置快照</b>：<code>captureHooksConfigSnapshot()</code>（setup.ts L172）在启动时固化 hooks 配置，运行期 hooks 文件被改不生效——防恶意仓库中途改配置提权。</li>
+<li><b>headless/交互同源</b>：同一个 query() 循环，print.ts 的 runHeadless 与 REPL 只是两个不同的「事件消费者」。</li>
+</ul>
+
+<h2 id="a2">A2 · 查询主循环：整个产品的心脏</h2>
+<p><code>src/query.ts</code>（2057 行）。<code>query()</code>（L276）包装 <code>queryLoop()</code>（L393），都是 <code>AsyncGenerator&lt;StreamEvent|Message|…, Terminal&gt;</code>——<b>返回值 Terminal 就是终止原因</b>（transitions.ts）。跨迭代状态收敛为单个 State 对象（L261-274）。</p>
+
+<div class="codeview cvtoggle"><input type="radio" name="cv2" id="cv2-s" checked><input type="radio" name="cv2" id="cv2-p"><div class="cv-bar"><span class="cv-title">src/query.ts:393-2044 · 主循环骨架（重建）</span><label for="cv2-s">源码</label><label for="cv2-p">伪代码</label></div><pre class="cv src"><code><span class="kw">while</span> (<span class="nu">true</span>) {
+  <span class="cm">// 1. 上下文缩减管道（依次尝试）</span>
+  applyToolResultBudget()   <span class="cm">// L567 超限工具结果落盘换预览</span>
+  snipCompact()             <span class="cm">// L589</span>
+  microcompact()            <span class="cm">// L602</span>
+  contextCollapse()         <span class="cm">// L638</span>
+  autoCompact()             <span class="cm">// L652</span>
+  predictiveAutoCompact()   <span class="cm">// L852 estimateMaxTurnGrowth 预估本turn增量</span>
+  <span class="cm">// 2. 阻塞上限检查 L826</span>
+  <span class="cm">// 3. 调模型 L899: callModel({ messages: prependUserContext(...), systemPrompt })</span>
+  <span class="cm">//    流式 for-await; 收集 tool_use 块 L1083 (needsFollowUp 是唯一续跑信号)</span>
+  <span class="cm">//    可选 StreamingToolExecutor 流式期间提前开跑工具 L759</span>
+  <span class="cm">// 4. 错误恢复: FallbackTriggeredError→切 fallbackModel(孤儿消息打墓碑 L953)</span>
+  <span class="cm">//    max_output_tokens 升级 64k 一次 L1486 / "Resume directly" ≤3 次 L1510</span>
+  <span class="cm">//    prompt-too-long → collapse drain → reactiveCompact L1372</span>
+  <span class="cm">// 5. 无工具调用 → stop hooks(L1557) → 预算续跑 nudge → return {reason:'completed'}</span>
+  <span class="cm">// 6. 有工具调用 → runTools(L1669) → tool_results</span>
+  <span class="cm">// 7. 附件注入 L1894: 排队命令/文件变更/记忆预取/技能发现预取</span>
+  <span class="cm">// 8. maxTurns 检查 L2033 → 下一迭代 State(L2044)</span>
+}</code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · 可直接照抄的循环骨架</span>
+async function* 查询循环(初始消息, 依赖):
+    state = { 消息: 初始消息, 工具上下文, 压缩跟踪, 轮次: 0 }
+    while true:
+        <span class="c">—— 阶段1: 上下文瘦身（从轻到重依次尝试）——</span>
+        工具结果预算化(超限结果落盘, 留预览+指针)
+        snip(模型登记的整条删除)
+        微压缩(旧工具结果替换为占位符, 见 A3)
+        自动压缩(超阈值→LLM摘要替换旧历史)
+        预测性压缩(预估本轮还会涨多少, 提前压)
+        <span class="c">—— 阶段2: 硬上限检查 ——</span>
+        若 估算token(消息) 超限: yield 错误; return {reason: blocking_limit}
+        <span class="c">—— 阶段3: 调模型（流式）——</span>
+        请求 = { systemPrompt, messages: 前置用户上下文(state.消息), tools }
+        async for 块 in 模型.流式(请求):
+            yield 块给消费者(UI/SDK)
+            聚合 assistant 消息; 收集其中的 tool_use 块
+            (可选)已完整的工具调用立即开跑    <span class="c">// 流式并行, 降延迟</span>
+        <span class="c">—— 阶段4: 错误恢复 ——</span>
+        降级模型错误 → 换备用模型重发整个请求; 孤儿消息打墓碑
+        输出超长 → 一次性放宽到64k; 或注入"直接继续"恢复消息(≤3次)
+        提示超长 → 先collapse再紧急压缩
+        <span class="c">—— 阶段5: 分叉 ——</span>
+        若 本轮没有工具调用:
+            跑 Stop hooks(可阻塞并带消息继续循环)
+            若 token 预算未用完且配置续跑: 注入nudge元消息, 继续
+            return {reason: completed}
+        <span class="c">—— 阶段6: 执行工具 ——</span>
+        工具结果 = await 执行工具批(tool_use块, 权限判定)   <span class="c">// 见 A4/A5</span>
+        <span class="c">—— 阶段7: 附件注入 ——</span>
+        追加: 排队的斜杠命令 / 文件变更通告 / 记忆预取 / 技能预取
+        state.消息 += [assistant消息, 工具结果]
+        若 轮次 &gt;= maxTurns: return {reason: max_turns}</code></pre></div>
+
+<div class="note"><b>十个终止原因</b>（transitions.ts）：<code>completed / model_error / max_turns / aborted_streaming / aborted_tools / stop_hook_prevented / hook_stopped / blocking_limit / prompt_too_long / image_error</code>。<b>循环的返回值是产品级 API</b>——SDK 消费者靠它决定重试还是上报。</div>
+
+<h3>A2.1 三个容易被忽略的设计</h3>
+<ul>
+<li><b><code>needsFollowUp</code> 是唯一续跑信号</b>（L752 注释明说 <code>stop_reason==='tool_use'</code> 不可靠）——判定「模型还想调工具」不能依赖单一 stop_reason，要综合 assistant 消息内容。</li>
+<li><b>流式期间开跑工具</b>（StreamingToolExecutor L759-766）：工具调用块一完整就派发，不等整条消息结束——交互延迟杀手锏。</li>
+<li><b>预测性压缩</b>：estimateMaxTurnGrowth 预估本轮还会产生多少 token，提前触发压缩避免「压完又立刻爆」。</li>
+</ul>
+
+<h2 id="a3">A3 · 上下文组装：一次请求的完整拼装顺序</h2>
+<div class="ascii">┌──────────────── 1. System Prompt（getSystemPrompt, prompts.ts L423）────────────────┐
+│ 静态段: intro / system section / doing tasks / actions / using your tools /        │
+│         output efficiency                                                          │
+│ ── SYSTEM_PROMPT_DYNAMIC_BOUNDARY（缓存断点标记）──                                 │
+│ 动态段: mode_persona · session_guidance(含skill命令) · memory · env_info ·          │
+│         language · output_style · mcp_instructions · scratchpad · token_budget     │
+│ （customSystemPrompt 整体替换 / appendSystemPrompt 追加）                            │
+├──────────────── 2. systemContext 追加到 system 末尾（api.ts L431）──────────────────┤
+│ git 状态快照(branch/status/log 5条, 截断1000字符) + cache breaker                    │
+├──────────────── 3. userContext 前置为 messages[0..1]（prependUserContext L443）────┤
+│ CLAUDE.md → &lt;project-instructions&gt;（高权重 meta user 消息）                          │
+│ currentDate 等其余 → &lt;system-reminder&gt;（低权重）                                    │
+├──────────────── 4. 消息体 ────────────────────────────────────────────────────────┤
+│ 完整历史（经 compact边界/toolResultBudget/snip/microcompact/collapse/autocompact投影）│
+│ → 本轮 assistant 消息 → tool_result 消息                                            │
+├──────────────── 5. Turn 中途附件（工具批之后、下一迭代前）──────────────────────────┤
+│ 排队命令附件 · 文件变更附件 · 记忆预取 · 技能/工具发现预取                             │
+├──────────────── 6. Tools ─────────────────────────────────────────────────────────┤
+│ 每个 tool.prompt() 串联（内置工具排序后作前缀、MCP 排序拼接 → prompt cache 断点稳定）│
+└───────────────────────────────────────────────────────────────────────────────────┘</div>
+<div class="impl"><b>A3 照抄清单</b>
+<ul>
+<li>六个槽位按序拼装，<b>永远不变的放最前</b>（system 静态段→缓存最深处）。</li>
+<li>用 <code>SYSTEM_PROMPT_DYNAMIC_BOUNDARY</code> 这类显式标记切开静态/动态段——方便做 excludeDynamicSections 类优化（把易变段挪到首条 user message 提高跨会话缓存命中）。</li>
+<li>指令内容包 <code>&lt;project-instructions&gt;</code>（高权重），杂项包 <code>&lt;system-reminder&gt;</code> 并声明「may or may not be relevant」（低权重）——<b>用标签管理指令权重</b>。</li>
+<li>工具列表 <b>内置在前、MCP 在后且各自排序</b>——工具集合稳定 = 缓存断点稳定。</li>
+<li>附件只在会话<b>尾部</b>追加，绝不改写已有消息。</li>
+</ul></div>
+
+<h2 id="a4">A4 · 工具系统：Tool 接口与并发编排</h2>
+<div class="codeview cvtoggle"><input type="radio" name="cv3" id="cv3-s" checked><input type="radio" name="cv3" id="cv3-p"><div class="cv-bar"><span class="cv-title">src/Tool.ts:373-706 · Tool 接口关键成员</span><label for="cv3-s">源码</label><label for="cv3-p">伪代码</label></div><pre class="cv src"><code><span class="kw">export interface</span> Tool&lt;Input, Output, P&gt; {
+  call(args, context, canUseTool, parentMessage, onProgress)      <span class="cm">// L390 执行</span>
+  inputSchema: ZodSchema                                          <span class="cm">// L405 (+inputJSONSchema for MCP)</span>
+  isConcurrencySafe: <span class="nu">boolean</span>                                        <span class="cm">// L413 可否并行</span>
+  isReadOnly: <span class="nu">boolean</span>                                              <span class="cm">// L415</span>
+  isDestructive: <span class="nu">boolean</span>                                           <span class="cm">// L417</span>
+  validateInput?(input, context): Promise&lt;ValidationResult&gt;       <span class="cm">// L500 调用前校验</span>
+  checkPermissions(input, context): Promise&lt;PermissionResult&gt;     <span class="cm">// L511 工具特有逻辑</span>
+  prompt(options): Promise&lt;<span class="nu">string</span>&gt;                                  <span class="cm">// L529 进系统提示的文档</span>
+  mapToolResultToToolResultBlockParam(content, toolUseID)         <span class="cm">// L568 模型侧序列化</span>
+  renderToolUseMessage / renderToolResultMessage                  <span class="cm">// L616/L577 UI 渲染</span>
+  renderGroupedToolUse?                                           <span class="cm">// L689 非verbose分组</span>
+  maxResultSizeChars                                              <span class="cm">// L477</span>
+  shouldDefer / alwaysLoad                                        <span class="cm">// L453-460 工具搜索延迟加载</span>
+}
+<span class="cm">// buildTool() + TOOL_DEFAULTS(L768): fail-closed 默认值
+//   isConcurrencySafe→false · isReadOnly→false · checkPermissions→allow</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · 一个工具的定义（照这个接口写你的工具层）</span>
+接口 Tool:
+    元信息:   名称, 描述(prompt() → 进系统提示), 输入Schema(Zod→JSON Schema)
+    分类标志: 只读? 破坏性? 可并行?       <span class="c">// 全部默认 fail-closed</span>
+    生命周期: validateInput(参数级校验, 可拒)
+              checkPermissions(工具特有权限逻辑)
+              call(参数, 上下文, 权限回调, 父消息, 进度回调)
+              mapToolResultToToolResultBlockParam(结果 → 模型可见格式)
+    UI 渲染:  renderToolUseMessage(部分输入即可渲染, 流式友好)
+              renderToolResultMessage / renderGroupedToolUse(只读工具分组折叠)
+    溢出控制: maxResultSizeChars(超限截断+落盘)</code></pre></div>
+<h4>工具池与并发编排</h4>
+<ul>
+<li><b>工具池</b>（tools.ts）：<code>getAllBaseTools()</code>（Bash/Read/Edit/Write/NotebookEdit/Glob/Grep/TodoWrite/WebFetch/WebSearch/AskUserQuestion/Skill/Agent/ExecuteTool）→ <code>getTools()</code> 按 deny 规则与 isEnabled 过滤 → <code>assembleToolPool()</code> 合并 MCP（内置排序前缀 + MCP 拼接）。</li>
+<li><b>并发编排</b>（toolOrchestration.ts）：<code>runTools()</code> 用 <code>partitionToolCalls()</code> 把连续 concurrency-safe 调用合并为并发批（上限 <code>CLAUDE_CODE_MAX_TOOL_USE_CONCURRENCY=10</code>），非安全批串行并应用 contextModifier。</li>
+</ul>
+<div class="codeview cvtoggle"><input type="radio" name="cv4" id="cv4-s" checked><input type="radio" name="cv4" id="cv4-p"><div class="cv-bar"><span class="cv-title">src/services/tools/toolOrchestration.ts · 并发分批</span><label for="cv4-s">源码</label><label for="cv4-p">伪代码</label></div><pre class="cv src"><code><span class="kw">const</span> MAX_CONCURRENCY = <span class="nu">10</span>  <span class="cm">// CLAUDE_CODE_MAX_TOOL_USE_CONCURRENCY</span>
+<span class="cm">// partitionToolCalls(L106): 扫描调用序列, 连续的 concurrency-safe 调用</span>
+<span class="cm">// 归入同一并发批; 遇到非安全调用(或批满)则断批 → 非安全批串行执行</span>
+<span class="cm">//   并应用 contextModifier(如 plan 模式改写)</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码</span>
+函数 执行工具批(调用列表):
+    批列表 = []
+    当前批 = []
+    对 调用 in 调用列表:            <span class="c">// 保持模型给出的顺序</span>
+        若 调用.工具.可并行 且 当前批.大小 &lt; 10:
+            当前批.追加(调用)
+        否则:
+            批列表.追加(当前批); 当前批 = []
+            若 不可并行: 批列表.追加([调用])   <span class="c">// 单元素串行批</span>
+    对 批 in 批列表:
+        若 批.长度 == 1 或 含不可并行: await 顺序执行(批)
+        否则: await Promise.all(批.map(带权限执行), 并发≤10)
+        结果按模型原序回填             <span class="c">// 并行执行, 顺序提交</span></code></pre></div>
+
+<h2 id="a5">A5 · 权限系统：判定链与 Bash 前缀规则</h2>
+<div class="codeview cvtoggle"><input type="radio" name="cv5" id="cv5-s" checked><input type="radio" name="cv5" id="cv5-p"><div class="cv-bar"><span class="cv-title">src/utils/permissions/permissions.ts:1179+ · 判定顺序</span><label for="cv5-s">源码</label><label for="cv5-p">伪代码</label></div><pre class="cv src"><code>hasPermissionsToUseToolInner 顺序:
+ 1a 整工具 deny 规则
+ 1b ask 规则（沙箱内 bash 可自动放行 L1210-1214）
+ 1c tool.checkPermissions（工具特有逻辑）
+ 1f/1g 内容级 ask 与安全检查 —— <b>绕过 bypass 模式</b>
+     (.git/、.claude/、shell 配置文件碰不得)
+ 2a bypassPermissions / plan 模式放行
+ 2b allow 规则
+ passthrough → 转 ask（交互确认）
+<span class="cm">// 权限模式: default / acceptEdits / plan / bypassPermissions / auto</span>
+<span class="cm">// ask 的兜底链(useCanUseTool.tsx): coordinator 自动检查 → swarm worker
+//   转发 → bash 分类器 2s 宽限 → Ink 交互对话框</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · 权限判定（顺序即安全语义）</span>
+函数 能用这工具吗(工具, 参数, 模式, 规则表):
+    若 规则表.deny 命中(工具名):            拒绝
+    若 规则表.ask 命中:                     → 走ask流程
+    若 工具.自身权限检查(参数) 不通过:       拒绝/ask
+    <span class="c">// 内容级安全检查——连 bypass 模式都拦:</span>
+    若 参数触碰 .git/ 或 .claude/ 或 shell 配置: 拒绝
+    若 模式 == bypassPermissions 或 plan:    放行
+    若 规则表.allow 命中:                    放行
+    默认: → ask(人工确认)
+ask流程: 本地协调器自动判 → 远端转发 → 2秒分类器宽限 → 弹对话框
+Bash 前缀规则三型: prefix(git:*) / wildcard(git *) / exact
+    "git *" 的尾随参数可选 → 与 "git:*" 语义对齐(源码 L136-145 专门处理)</code></pre></div>
+<div class="impl"><b>A5 照抄清单</b><ul>
+<li>权限默认 <b>fail-closed</b>：规则表不匹配 → ask，绝不静默放行。</li>
+<li><b>内容级安全检查独立于权限模式</b>——bypass 也不能碰 .git/.claude/shell 配置。</li>
+<li>规则解析成 prefix/wildcard/exact 三型并统一语义（`git *` ≈ `git:*`）。</li>
+</ul></div>
+
+<h2 id="a6">A6 · 子代理与 Fork：缓存安全的派生</h2>
+<div class="codeview cvtoggle"><input type="radio" name="cv6" id="cv6-s" checked><input type="radio" name="cv6" id="cv6-p"><div class="cv-bar"><span class="cv-title">src/utils/forkedAgent.ts:61, 342, 508 · CacheSafeParams</span><label for="cv6-s">源码</label><label for="cv6-p">伪代码</label></div><pre class="cv src"><code><span class="cm">// CacheSafeParams(L61): systemPrompt / userContext / systemContext /
+//   toolUseContext / forkContextMessages</span>
+<span class="cm">// 注释: "API cache key 由 system prompt、tools、model、messages 前缀、
+//        thinking config 组成" — fork 必须复用这五项才能命中父缓存</span>
+createSubagentContext(L342): 默认<b>全隔离</b>
+  cloneFileStateCache · createChildAbortController(父abort传播)
+  setAppState 变 no-op · 新 agentId · 克隆 contentReplacementState
+  可经 shareSetAppState/shareAbortController 显式共享
+runForkedAgent(L508): 跑 query 循环; 从 message_delta 累计 usage(L577)
+  → tengu_fork_agent_query 遥测(含 cacheHitRate L683)
+<span class="cm">// 用于: compact / session-memory / speculation / recap 等一切旁路 agent</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · 缓存安全的 fork</span>
+函数 fork(用途):
+    <span class="c">// 缓存五件套必须逐字节复用父会话:</span>
+    fork.systemPrompt = 父.systemPrompt
+    fork.messages前缀 = 父.messages
+    fork.tools = 父.tools(或其子集但保持前缀稳定)
+    fork.model = 父.model; fork.thinking = 父.thinking
+    <span class="c">// 上下文默认全隔离(安全), 需要共享须显式声明:</span>
+    fork.文件状态缓存 = 克隆(父)          <span class="c">// 子代理读文件不污染父的去重状态</span>
+    fork.abort = 子控制器(但父abort传播)   <span class="c">// 父取消 → 子一起停</span>
+    fork.appState写入 = 空操作            <span class="c">// 子代理不触发UI状态变化</span>
+    fork.agentId = 新id                   <span class="c">// sidechain transcript 独立落盘</span>
+    运行独立 query 循环 → 汇报 usage + 缓存命中率
+<span class="cm">// 用途: 后台压缩 / 记忆抽取 / 会话笔记 / 推测执行 / 回顾摘要</span></code></pre></div>
+<p><b>TaskType 七种</b>（Task.ts L6-13）：<code>local_bash | local_agent | remote_agent | in_process_teammate | local_workflow | monitor_mcp | dream</code>，任务输出落盘（getTaskOutputPath）供后台任务面板读取。AgentTool（Task 工具）支持 teammate 孵化与后台子代理；runAgent 为每个 agent 初始化专属 MCP（frontmatter mcpServers）。</p>
+
+<h2 id="a7">A7 · Hooks：28 个生命周期事件与 JSON 契约</h2>
+<pre><code><span class="cm">// 事件全集（sdk/coreTypes.ts L25-53）:</span>
+PreToolUse · PostToolUse · PostToolUseFailure · Notification · UserPromptSubmit
+SessionStart · SessionEnd · Stop · StopFailure · SubagentStart · SubagentStop
+PreCompact · PostCompact · PermissionRequest · PermissionDenied · Setup
+TeammateIdle · TaskCreated · TaskCompleted · Elicitation · ElicitationResult
+ConfigChange · WorktreeCreate · WorktreeRemove · InstructionsLoaded
+CwdChanged · FileChanged</code></pre>
+<div class="codeview cvtoggle"><input type="radio" name="cv7" id="cv7-s" checked><input type="radio" name="cv7" id="cv7-p"><div class="cv-bar"><span class="cv-title">src/utils/hooks.ts:491-567 · JSON 输出契约</span><label for="cv7-s">源码</label><label for="cv7-p">伪代码</label></div><pre class="cv src"><code><span class="kw">interface</span> TypedSyncHookOutput {
+  continue?: <span class="nu">boolean</span>; suppressOutput?: <span class="nu">boolean</span>; stopReason?: <span class="nu">string</span>;
+  decision?: <span class="st">'approve'</span> | <span class="st">'block'</span>; reason?: <span class="nu">string</span>; systemMessage?: <span class="nu">string</span>;
+  hookSpecificOutput?: {
+    hookEventName: <span class="st">'PreToolUse'</span>,
+    permissionDecision?: <span class="st">'allow'</span> | <span class="st">'deny'</span> | <span class="st">'ask'</span>,
+    permissionDecisionReason?: <span class="nu">string</span>,
+    updatedInput?: Record&lt;<span class="nu">string</span>, unknown&gt; }   <span class="cm">// 可改写工具输入!</span>
+  | { hookEventName: <span class="st">'UserPromptSubmit'</span>, additionalContext: <span class="nu">string</span> } | ...
+}
+<span class="cm">// matcher: 精确名 | "a|b|c" | 正则; if 条件支持 'Bash(git *)' 权限规则语法</span>
+<span class="cm">// shell hook 在持久 shell 快照中执行(复用 bash state) + 沙箱清理</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · hook 引擎</span>
+注册: settings(4层) + 插件(去重) + skill frontmatter + 内部回调
+触发事件 E:
+    对 每个匹配 E 的 hook(matcher: 名字/管道列表/正则):
+        在持久 shell 里执行(继承上次的环境/工作目录, 跑完清理沙箱)
+        stdout 是 JSON? → 按事件契约解释:
+            PreToolUse: 可 allow/deny/ask, 甚至改写工具输入
+            UserPromptSubmit: additionalContext 注入本轮上下文
+            continue:false → 阻断并给 stopReason
+        不是 JSON → 纯文本按上下文注入处理
+<span class="cm">// 关键工程点: hook 是官方推荐的"自建记忆检索"挂点
+//   (UserPromptSubmit 的 additionalContext 就是为 RAG 注入留的口子)</span></code></pre></div>
+
+<h2 id="a8">A8 · Skills 与斜杠命令</h2>
+<ul>
+<li><b>Command 三型</b>（types/command.ts）：PromptCommand（getPromptForCommand + allowedTools + <code>context:'inline'|'fork'</code>——fork 即子代理独立上下文与 token 预算）/ LocalCommand / LocalJSXCommand（惰性加载 Ink UI）。</li>
+<li><b>合并次序</b>（commands.ts）：builtin + 磁盘 skills + bundled + 插件 + MCP prompts。</li>
+<li><b>Skill 省 token 的关键</b>（loadSkillsDir.ts）：系统提示只注入 <b>frontmatter</b>（estimateSkillFrontmatterTokens L100），正文调用时才加载——「目录常驻、正文按需」。</li>
+<li>frontmatter 字段：<code>description / argument-hint / allowed-tools / when_to_use / user-invocable / disable-model-invocation / hooks / context: fork / paths</code>；bundled skill 可带 files（首次调用解压到磁盘并提示 base dir）。</li>
+</ul>
+
+<h2 id="a9">A9 · 会话与 Transcript</h2>
+<div class="codeview cvtoggle"><input type="radio" name="cv8" id="cv8-s" checked><input type="radio" name="cv8" id="cv8-p"><div class="cv-bar"><span class="cv-title">src/utils/sessionStorage.ts:1445-1531 · 四种记录</span><label for="cv8-s">源码</label><label for="cv8-p">伪代码</label></div><pre class="cv src"><code><span class="cm">// 路径: ~/.claude/projects/&lt;projectDir&gt;/&lt;sessionId&gt;.jsonl (L200-205)</span>
+recordTranscript(L1445)         <span class="cm">// parentUuid 链: 新消息只追加, 支持分叉/rewind</span>
+recordSidechainTranscript(L1488)<span class="cm">// 子代理 agent-&lt;agentId&gt;.jsonl + .meta.json</span>
+recordFileHistorySnapshot(L1513)<span class="cm">// checkpoint → /rewind 文件回滚+消息回退</span>
+recordContentReplacement(L1531) <span class="cm">// 工具结果替换记录 → resume 时复现(保 cache)</span>
+<span class="cm">// resume/fork: sessionRestore.processResumedConversation</span>
+<span class="cm">//             conversationRecovery.loadConversationForResume</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · transcript 设计四件套</span>
+① 主链: 每条消息 {uuid, parentUuid, ...} 追加写入 JSONL
+     → 天然支持分叉: 从任意节点 parentUuid 换父即得新分支(/rewind)
+② 副链: 子代理写独立文件 agent-&lt;id&gt;.jsonl + .meta.json(元信息)
+③ checkpoint: 工具改文件前快照 → 支持"代码回滚+对话回退"双恢复
+④ 替换记录: microcompact 等改写了工具结果 → 记录"谁替换了谁"
+     → resume 时按记录重放替换, 上下文字节与当时一致(缓存不炸)
+另: 输入历史 ~/.claude/history.jsonl (上限100条, &gt;1024字符走 hash 引用 paste store)</code></pre></div>
+
+<h2 id="a10">A10 · UI / MCP / 远程 / 配置面</h2>
+<div class="grid2">
+<div class="card"><div class="card-title">React/Ink UI</div><b>REPL.tsx 6684 行</b>是唯一屏幕：<code>for await (event of query(...))</code> 驱动一切渲染；Messages.tsx 的 applyGrouping 把只读工具分组折叠（ctrl+O verbose）；VirtualMessageList 虚拟滚动；~100 个 React hooks（useCanUseTool / useMergedTools / useCommandQueue / useBackgroundAgentTasks…）。</div>
+<div class="card"><div class="card-title">MCP client（3453 行）</div>transport：stdio / SSE(OAuth+step-up) / http / ws-ide / in-process；工具命名 <code>mcp__&lt;server&gt;__&lt;tool&gt;</code>；一次调用取 tools/prompts/resources；配置 5 层（user/project/local/flag/policy）+ 企业策略过滤。</div>
+<div class="card"><div class="card-title">远程/守护/SSH</div>RemoteSessionManager 云端会话镜像；<code>claude ssh</code> 探测→部署→接管远端；daemon supervisor：worker 崩溃 2s→120s 指数退避重启、5 次快速失败后 park；<code>cc://</code> 直连会话。</div>
+<div class="card"><div class="card-title">配置分层（优先级升序）</div>userSettings(~/.claude/settings.json) → projectSettings(.claude/settings.json) → localSettings(settings.local.json) → flagSettings(--settings) → <b>policySettings(托管策略最高)</b>；managed 先合并、drop-in 目录按字母序覆盖；另有 MDM / 远程托管 / 策略限额 / 受管环境变量。</div>
+</div>
+
+<h2 id="a-mvp">A11 · Claude Code 最小可复刻闭环</h2>
+<div class="impl"><b>核心闭环（约 1500 行可复刻）</b>
+<ul>
+<li><b>① 循环</b>：async generator while 循环——缩减管道(可先只做 autocompact)→上限检查→流式调用→收集 tool_use→无工具即终止→执行工具→附件追加→下一轮；返回值=终止原因枚举。</li>
+<li><b>② Tool 接口</b>：schema(Zod)+prompt()+call()+checkPermissions()+双端渲染(模型侧 map、UI 侧 render)；默认值 fail-closed。</li>
+<li><b>③ 上下文</b>：system(静态+动态两段) → messages[0]=指令高权重标签 → 尾部附件追加；工具列表稳定排序。</li>
+<li><b>④ 权限</b>：deny→ask→工具自检→内容安全(独立于 bypass)→模式放行→allow→默认 ask；Bash 规则三型。</li>
+<li><b>⑤ transcript</b>：JSONL+parentUuid 链；sidechain 独立文件；替换记录保缓存复现。</li>
+<li><b>⑥ fork</b>：缓存五件套复用 + 上下文默认全隔离 + 显式共享。</li>
+</ul>
+其余（hooks/skills/MCP/插件/远程/后台任务/checkpoint）都是围绕这个闭环的<b>正交扩展点</b>，可以按需逐个加。</div>
+
+<div class="pagebreak" data-label="—— Part B ——"></div>
+
+<!-- ================================================================ -->
+<h2 id="b1">B1 · OpenClaw 全景与核心/插件边界 <span class="tag" style="background:rgba(63,185,80,.15);color:var(--green)">openclaw/openclaw</span></h2>
+<p>OpenClaw 是 TypeScript pnpm monorepo，目标是「<b>单进程常驻 Gateway 接管所有消息面 + 内嵌 agent runtime + 插件化一切外围</b>」的多渠道个人 AI 助理。</p>
+<table>
+<tr><th>目录</th><th>内容</th></tr>
+<tr><td><code>src/</code></td><td>宿主核心：gateway、agents（runtime）、channels（入站管线）、auto-reply（回合编排）、config、cron、plugins、routing、state（SQLite schema）、skills、security</td></tr>
+<tr><td><code>extensions/</code></td><td><b>约 180 个捆绑插件</b>：渠道（whatsapp/telegram/discord/slack/signal/imessage/matrix/msteams/line…）、模型 provider（anthropic/openai/google/ollama…）、memory（memory-core/active-memory/memory-lancedb/memory-wiki）、外围（browser/canvas/webhooks/logbook/workboard/vault…）</td></tr>
+<tr><td><code>packages/</code></td><td>可复用包：<code>agent-core</code>（循环）、<code>ai/llm-core</code>（事件流）、<code>gateway-protocol/client</code>、<code>sdk</code>、<code>plugin-sdk</code>、<code>normalization-core</code>、<code>net-policy</code>、<code>tool-call-repair</code></td></tr>
+<tr><td><code>apps/</code></td><td>原生客户端：macOS/iOS（SwiftUI）、android、linux、swabble</td></tr>
+<tr><td><code>ui/</code> · <code>skills/</code> · <code>docs/</code></td><td>Vite+Lit Control UI（Gateway 同端口伺服）· 捆绑技能包 · 极完整文档树</td></tr>
+</table>
+<div class="note"><b>核心边界铁律</b>（docs/agent-runtime-architecture.md:23）：核心经 OpenClaw 模块与 SDK barrels 调内嵌 runtime——<b>不依赖任何外部 agent 框架包</b>；插件只用文档化的 <code>openclaw/plugin-sdk/*</code> 入口，<b>禁止 import <code>src/**</code> 内部实现</b>。运行时分层：<code>src/agents/embedded-agent-runner/</code>（尝试循环）→ <code>src/agents/sessions/</code>（持久化与资源加载）→ <code>packages/agent-core/</code>（可复用循环）→ <code>src/agents/agent-tools*.ts</code>（工具面）。</div>
+
+<h2 id="b2">B2 · Gateway 架构：常驻单端口多路复用</h2>
+<div class="flow">
+<span class="step">openclaw.mjs → src/entry.ts</span><span class="arrow">→</span>
+<span class="step">gateway/server.ts<br><small>42 行惰性加载器</small></span><span class="arrow">→</span>
+<span class="step">server-kernel.ts:123<br><small>createGatewayKernel(port=18789)</small></span><span class="arrow">→</span>
+<span class="step">bootstrap → kernelState → lifecycle → coreRuntime → requestRuntime<br><small>每步 lazy + startup trace</small></span>
+</div>
+<div class="ascii">单端口 18789 多路复用:
+├── WebSocket 控制/RPC（首帧必须是 connect，否则硬关闭）
+│     帧: {type:"req",id,method,params} → {type:"res",id,ok,payload|error}
+│          {type:"event",event,payload,seq}   ← 服务端推送
+├── HTTP API: /v1/models · /v1/embeddings · /v1/chat/completions
+│             /v1/responses · /tools/invoke
+├── 插件 HTTP 路由
+└── Control UI（Vite+Lit 静态站）
+端口解析: --port → OPENCLAW_GATEWAY_PORT → gateway.port → 18789
+src/gateway/ 共 ~1227 个文件: server-http / server-ws-runtime /
+  server-methods(RPC方法表) / server-channels / server-cron /
+  server-plugins / server-auth.* / server-shutdown</div>
+<h4>Loopback 安全模型（docs/concepts/architecture.md:76-115）</h4>
+<ul>
+<li>默认 bind <code>loopback</code>（127.0.0.1）；容器内默认 <code>auto</code>（0.0.0.0）；Tailscale serve/funnel 激活时<b>强制 loopback</b>。</li>
+<li>认证默认必开（token/password 或 env 等价物）；trusted-proxy 与 Tailscale 从请求头取身份。</li>
+<li><b>设备配对</b>：所有客户端带 device identity；新设备需审批获发 device token；所有连接必须用密钥签 <code>connect.challenge</code> nonce（签名 payload v3 绑定 platform/deviceFamily）。</li>
+<li>副作用方法（<code>send</code>/<code>agent</code>）<b>要求幂等键</b>，服务端维持去重缓存——网络重试不会重复执行。</li>
+</ul>
+
+<h2 id="b3">B3 · 渠道适配与入站管线</h2>
+<div class="codeview cvtoggle"><input type="radio" name="cv9" id="cv9-s" checked><input type="radio" name="cv9" id="cv9-p"><div class="cv-bar"><span class="cv-title">extensions/telegram/index.ts:5 · 渠道插件形态</span><label for="cv9-s">源码</label><label for="cv9-p">伪代码</label></div><pre class="cv src"><code><span class="kw">export default</span> defineBundledChannelEntry({
+  id: <span class="st">"telegram"</span>, importMetaUrl: import.meta.url,
+  plugin: { specifier: <span class="st">"./channel-plugin-api.js"</span>, exportName: <span class="st">"telegramPlugin"</span> },
+  secrets: {...}, runtime: {...}, accountInspect: {...},
+  registerFull: registerTelegramMiniApp,
+})</code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · 渠道插件只做四件事</span>
+渠道插件 = {
+  声明: id + 密钥 schema + 运行时需求,
+  <span class="c">// 它"不实现发送工具"——核心提供唯一的 message 工具!</span>
+  职责1: config + DM 安全/allowlist + 设备配对
+  职责2: 会话语法(平台会话id → base chat/thread id)
+  职责3: 出站发送(把归一化回复投递回平台, 含线程化)
+  职责4: 入站归一化(见下)
+}
+<span class="cm">// 入站管线(SDK 帮手): 平台事件 → 归一化事实/上下文 → agent 回合 → 交付</span>
+buildChannelInboundEventContext: 把归一化事实投影为 prompt/会话上下文
+    <span class="c">// 参与者证据必须来自 host 注入的 channelIngress, 禁止插件重建</span>
+runChannelInboundEvent: ingest→classify→preflight→resolve→record→dispatch→finalize
+dispatchChannelInboundReply: 交付回复
+媒体附件 → ChannelInboundMediaInput 事实数组(下标即附件身份)</code></pre></div>
+<p><b>DM 准入链</b>：<code>src/channels/direct-dm.ts</code>、<code>allow-from.ts</code>（允许名单）、<code>mention-gating.ts</code>（群聊 @ 门控）、<code>command-gating.ts</code>（命令属主门控）。渠道启停由 <code>server-channels.ts startChannels/startChannel</code> 驱动，渠道目录来自生成的 <code>dist/channel-catalog.json</code> + 插件清单。</p>
+
+<h2 id="b4">B4 · 路由与会话键：消息从哪来、回到哪去</h2>
+<div class="codeview cvtoggle"><input type="radio" name="cv10" id="cv10-s" checked><input type="radio" name="cv10" id="cv10-p"><div class="cv-bar"><span class="cv-title">src/routing/session-key.ts:206-271 · 会话键语法</span><label for="cv10-s">源码</label><label for="cv10-p">伪代码</label></div><pre class="cv src"><code>buildAgentMainSessionKey   → <span class="st">`agent:&lt;agentId&gt;:main`</span>
+dmScope <span class="st">"per-peer"</span>                → agent:&lt;id&gt;:direct:&lt;peerId&gt;
+dmScope <span class="st">"per-channel-peer"</span>        → agent:&lt;id&gt;:&lt;channel&gt;:direct:&lt;peerId&gt;
+dmScope <span class="st">"per-account-channel-peer"</span> → agent:&lt;id&gt;:&lt;channel&gt;:&lt;account&gt;:direct:&lt;peerId&gt;
+群/频道(groupScope per-group) → agent:&lt;id&gt;:&lt;channel&gt;:&lt;peerKind&gt;:&lt;peerId&gt;
+<span class="cm">// session.identityLinks 把跨渠道身份映射到同一 canonical peer</span>
+<span class="cm">//   (resolveLinkedDirectPeerId :274-318); cron 会话键有专门识别</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · 路由决策</span>
+函数 路由(渠道, 账号, 对端, dmScope, groupScope):
+    agentId = 按 bindings[] 匹配, 优先级:
+        binding.peer(.parent/.wildcard) → guild+roles → guild → team
+        → account → channel → default
+    sessionKey = 按上面的语法拼:
+        "agent:{agentId}[:{channel}[:{account}]]:{kind}:{peerId}"
+    返回 {agentId, sessionKey, matchedBy}
+<span class="cm">// dmScope 默认 main = 所有DM共享主会话(单用户场景)
+//   多用户必须 per-channel-peer 隔离, 否则 Alice 的私信对 Bob 可见!</span></code></pre></div>
+
+<h2 id="b5">B5 · Agent Runtime：一个回合的完整执行</h2>
+<div class="codeview cvtoggle"><input type="radio" name="cv11" id="cv11-s" checked><input type="radio" name="cv11" id="cv11-p"><div class="cv-bar"><span class="cv-title">src/agents/embedded-agent-runner/ + packages/agent-core · 回合流水线</span><label for="cv11-s">源码</label><label for="cv11-p">伪代码</label></div><pre class="cv src"><code><span class="cm">// 1. 入口: Gateway RPC agent/agent.wait 或 CLI openclaw agent</span>
+<span class="cm">//    agent RPC: 校验→解析会话→持久化元数据→立即返回 {runId, acceptedAt}</span>
+<span class="cm">// 2. agentCommand: model/thinking 默认值 + skills 快照 → runEmbeddedAgent</span>
+<span class="cm">// 3. run-loop.ts:28-33 尝试循环(带 retry budget: rotate_profile/fallback_model)</span>
+<span class="cm">//    activeWriterRunId: 流式开始前声明; 所有 transcript 写入带</span>
+<span class="cm">//    expectedWriterRunId 同事务校验(防被取代的 run 写陈旧数据)</span>
+<span class="cm">// 4. attempt 组装: system-prompt.ts buildSystemPrompt</span>
+<span class="cm">//    (customPrompt/tools/promptGuidelines/appendSystemPrompt/cwd/contextFiles</span>
+<span class="cm">//     /skills, 项目上下文进 &lt;project_context&gt; 块)</span>
+<span class="cm">//    + 插件 before_prompt_build 注入 prependContext/systemPrompt</span>
+<span class="cm">// 5. packages/agent-core/agent-loop.ts: StreamFn/EventStream</span>
+<span class="cm">//    (text/thinking/toolcall start/delta/end) + validateToolArguments</span>
+<span class="cm">//    + steering(排队用户消息可跳过工具) + 工具循环恢复</span>
+<span class="cm">// 6. 回复: assistant delta→chat delta; NO_REPLY 静默令牌过滤;</span>
+<span class="cm">//    消息工具已发送的重复回复从最终 payload 剔除</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · OpenClaw 回合</span>
+收到入站消息:
+    ingest → classify → preflight → resolve(路由) → record → dispatch
+agent回合:
+    准入: 按会话 lane 串行(同会话不并发); 解析模型+凭据
+    声明写者: activeWriterRunId = 本次run     <span class="c">// 所有写库都校验它, 防竞态</span>
+    尝试循环(带重试预算):
+        组装 prompt: 基础(system-prompt.ts) + skills + bootstrap预算注入
+                   + memory prompt + provider 贡献 + 沙箱状态
+                   + 插件 before_prompt_build(可注入/收窄工具面)
+        LLM 流式: text/thinking/toolcall 事件流
+            参数校验 validateToolArguments → 修复 → 准入
+            steering: 排队的新用户消息可跳过当前工具
+        工具循环 → 完成/失败(可 rotate_profile 或 fallback_model 重试)
+    回复塑形: 过滤 NO_REPLY; 消息工具已发过的内容去重
+    交付: 按最后路由回渠道(或 cron 的 delivery 计划)
+钩子: HOOK.md 脚本(command:new/reset/stop, agent:bootstrap)
+    + 插件钩子(before_model_resolve/before_prompt_build/before_agent_reply/
+      agent_end/before_tool_call/message_received/sending/sent/session_*)</code></pre></div>
+
+<h2 id="b6">B6 · Session 子系统：双表模型</h2>
+<div class="codeview cvtoggle"><input type="radio" name="cv12" id="cv12-s" checked><input type="radio" name="cv12" id="cv12-p"><div class="cv-bar"><span class="cv-title">src/state/ · session_nodes + session_windows</span><label for="cv12-s">源码</label><label for="cv12-p">伪代码</label></div><pre class="cv src"><code><span class="cm">// session_nodes(主键 session_key, migration :32-58) —— 稳定路由键:</span>
+current_session_id, entry_json, status('running|done|failed|killed|timeout'),
+created_via('operator|spawn|channel|cron|talk|run|plugin|internal'),
+created_actor_type('human|agent|system'), parent_session_key, spawned_by,
+fork_source_session_key/id/entry_id, label/display_name/category/icon,
+pinned_at/archived_at/last_read_at/last_interaction_at
+<span class="cm">// session_windows(主键 session_id, FK→nodes CASCADE, :180-209) —— 窗口链:</span>
+previous_session_id,
+reason CHECK IN ('initial','reset','rollover','fork','rewind','switch',
+                 'recovery','compaction'),
+session_scope('conversation|shared-main|group|channel'),
+transcript_updated_at/observed_at, acp_owned, plugin_owner_id,
+chat_type('direct|group|channel'), channel, account_id,
+model_provider/model, agent_harness_id</code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · 双表设计</span>
+session_nodes: 会话的"身份"——稳定键(路由用), 元数据, 状态, 血缘
+session_windows: 会话的"窗口"——每次 reset/rollover/fork/rewind/
+                 switch/recovery/compaction 开一个新窗口行,
+                 previous_session_id 链式相连
+含义: "会话"是长 lived 的路由实体; "窗口"是其中一段连续上下文
+      → 重置会话 ≠ 删会话(窗口链保留, 可审计可回溯)
+重置策略: mode ∈ none|daily|idle; daily atHour=4; idle 用 lastInteraction;
+      resetByType 可按 direct/group/thread 细分
+      过期会话在下一次入站时开新窗口(reason='reset')
+状态感知: session_state_events 信号日志 + session_watch_cursors 游标
+      (human_direct_message/goal_changed 通知观察者;
+       child_spawned/run_completed/failed/compacted 仅记录)
+      观察者收字节稳定的"Reconcile before acting"通知 → changesSince 拉增量</code></pre></div>
+
+<h2 id="b7">B7 · 工具面与权限/沙箱</h2>
+<table>
+<tr><th>类别</th><th>工具</th></tr>
+<tr><td>运行时</td><td><code>exec · process · terminal · code_execution</code></td></tr>
+<tr><td>文件</td><td><code>read · write · edit · apply_patch</code></td></tr>
+<tr><td>人类输入</td><td><code>ask_user · secrets</code></td></tr>
+<tr><td>Web</td><td><code>web_search · x_search · web_fetch · browser · screen</code></td></tr>
+<tr><td>消息</td><td><code>message</code>（<b>唯一共享消息工具</b>，渠道插件不实现发送）</td></tr>
+<tr><td>会话/多agent</td><td><code>sessions_* · subagents · agents_wait/list · session_status · get/create/update_goal</code></td></tr>
+<tr><td>自动化</td><td><code>cron(automations) · heartbeat_respond</code></td></tr>
+<tr><td>网关/媒体</td><td><code>gateway · nodes · view_image · image/music/video_generate · tts</code></td></tr>
+<tr><td>大目录</td><td><code>tool_search · tool_search_code · tool_describe · Code Mode</code></td></tr>
+<tr><td>memory-core</td><td><code>memory_search · memory_get · intent</code></td></tr>
+</table>
+<div class="codeview cvtoggle"><input type="radio" name="cv13" id="cv13-s" checked><input type="radio" name="cv13" id="cv13-p"><div class="cv-bar"><span class="cv-title">权限：五层防御（无单点 canUseTool）</span><label for="cv13-s">源码</label><label for="cv13-p">伪代码</label></div><pre class="cv src"><code><span class="cm"><span class="cm">// 1) 工具可见性策略: profiles(coding/messaging) + allow/deny + 群策略
+<span class="cm">//    finalizeAgentTools(agent-tools.finalize.ts): profile/provider/沙箱/
+<span class="cm">//    渠道/群/发送者/subagent 策略管线过滤(conversation-tool-policy-pipeline)
+<span class="cm">// 2) 会话权限模式: read-only | guarded | workspace | full
+<span class="cm">//    → 决定文件系统边界(sessionRoot)与 exec 升级审查者
+<span class="cm">//      (人工 allowlist 快路径 / LLM 审查 / 无)
+<span class="cm">// 3) before_tool_call 插件钩子: { block: true } 直接终止
+<span class="cm">// 4) GATEWAY_OWNER_ONLY_CORE_TOOLS(src/security/dangerous-tools.ts)
+<span class="cm">// 5) exec 审批(exec-approvals)</span>
+<span class="c">// 沙箱(默认关): sandbox.mode off|non-main|all(主会话键恒 agent:&lt;id&gt;:main
+//   不可配置) · scope agent|session|shared · backend docker|podman|ssh|openshell
+//   被沙箱的是工具执行(exec/read/write/edit/apply_patch/process+可选浏览器),
+//   Gateway 进程本身不进沙箱; tools.elevated 是逃逸路径但突破不了 creator-role</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · 权限判定（多层而非单点）</span>
+函数 工具能否执行(会话, 工具, 参数):
+    ① 可见性: 该会话的 profile/allow-deny/群策略先过滤工具面(不可见=不存在)
+    ② 权限模式: read-only(只读) / guarded(写需审查) / workspace(限会话根) / full
+    ③ 插件钩子: before_tool_call 可 block
+    ④ 危险工具: 网关属主专用集合
+    ⑤ exec 审批: 白名单快过 → LLM 审查 → 拒绝
+沙箱(可选): mode=all 时工具执行进容器(主会话键永远例外地按配置判断)
+    只沙箱"工具执行", 不沙箱 Gateway 进程本身
+<span class="cm">// 设计哲学: 与 CC 的"单点判定链"相反——OC 用"面过滤+模式+钩子+审批"
+//           五层叠加, 因为多渠道场景下没有单一的信任边界</span></code></pre></div>
+
+<h2 id="b8">B8 · 插件系统：manifest + register(api) + 注册表消费</h2>
+<div class="codeview cvtoggle"><input type="radio" name="cv14" id="cv14-s" checked><input type="radio" name="cv14" id="cv14-p"><div class="cv-bar"><span class="cv-title">docs/plugins · 四层生命周期与能力注册</span><label for="cv14-s">源码</label><label for="cv14-p">伪代码</label></div><pre class="cv src"><code><span class="cm">// openclaw.plugin.json 必备: id + configSchema(内联 JSON Schema——</span>
+<span class="cm">//   不执行代码即可校验配置!)</span>
+<span class="cm">// 可选: channels[] · providers[] · kind("memory"|"context-engine" 独占槽位)</span>
+<span class="cm">//   · contracts.tools(工具所有权快照) · cliCommands · uiHints(sensitive)</span>
+<span class="cm">//   · activation.onStartup · enabledByDefault · requiresPlugins</span>
+<span class="cm">// 四层生命周期: manifest+discovery → enablement+validation →</span>
+<span class="cm">//   runtime loading(register(api), registrationMode==="full") →</span>
+<span class="cm">//   surface consumption(tools/channels/hooks/HTTP/CLI/services)</span>
+<span class="cm">// 能力注册 API: registerProvider/Channel/EmbeddingProvider/SpeechProvider/</span>
+<span class="cm">//   RealtimeVoice/MediaUnderstanding/ImageGeneration/WebFetch/WebSearch/</span>
+<span class="cm">//   GatewayDiscovery/Migration + registerTool/registerCommand/on(event)/</span>
+<span class="cm">//   registerMemoryCapability</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · 插件形态（以 memory-core 为例）</span>
+清单 openclaw.plugin.json:
+    id, configSchema(纯JSON Schema), kind:"memory"(占记忆独占槽位),
+    contracts.tools:["intent","memory_get","memory_search"],  <span class="c">// 所有权声明</span>
+    activation.onStartup:false, cliCommands:[{name:"memory",hasSubcommands:true}]
+代码 register(api):
+    api.registerMemoryCapability({ 检索工具名, 是否支持私有transcript召回,
+                                   prompt构建器, flush计划器, 运行时, 公共产物 })
+    api.registerTool(memory_search 工厂, {names:["memory_search"]})
+    api.registerTool(memory_get 工厂)
+    api.registerTool(intent 工厂)
+    api.on("before_prompt_build", 注入standing intents)
+    api.on("before_agent_reply", 周期清扫, {eligibleTriggers:["heartbeat","cron"]})
+    api.registerCommand({name:"dreaming", handler})
+生命周期: 发现(4个根: 配置路径/工作区/全局/捆绑) → 启用校验(含槽位排他)
+    → 进程内加载(native require, Jiti 仅紧急回退) → 注册表消费
+<span class="cm">// 精妙处: 清单是纯数据(可静态校验/渲染表单/脱敏), 代码只负责运行时注册</span></code></pre></div>
+
+<h2 id="b9">B9 · Cron / Heartbeat：自动化子系统</h2>
+<table>
+<tr><th>调度类型</th><th>说明</th></tr>
+<tr><td><code>at</code> / <code>every</code> / <code>cron</code>(5/6字段+--tz)</td><td>常规三件套</td></tr>
+<tr><td><code>on-exit</code></td><td>监听某命令退出触发</td></tr>
+<tr><td><code>stream</code></td><td>长命令 stdout 行批触发（match/line 模式、batchMs、maxBatchBytes）</td></tr>
+<tr><td><code>pacing.min/max</code> + <code>next_check</code></td><td>动态节奏：任务运行中用 automations 工具自定下次检查时间（被边界钳制）</td></tr>
+<tr><td><code>/loop [interval] &lt;prompt&gt;</code></td><td>聊天快捷方式：owner-only，创建绑定当前会话的循环 agent-turn</td></tr>
+<tr><td><b>托管 cron</b></td><td>插件用声明式 <code>ManagedCronJobCreate{declarationKey, schedule, sessionTarget, payload, delivery}</code> 注册，运行时<b>每 60s 对账</b>（drift 则 update/remove）——dreaming 就是这么挂的（<code>0 3 * * *</code>）</td></tr>
+<tr><td><b>Heartbeat</b></td><td>本质是「系统拥有的 automation job」：每 agent 一条，配置源 <code>agents.*.heartbeat</code>，产生主会话周期 agent turn；心跳会话有独立 <code>:heartbeat</code> 后缀；isolated 心跳只带轻量 bootstrap</td></tr>
+</table>
+<p><b>隔离 agent 回合</b>（src/cron/isolated-agent/）：每 run 新会话、双超时看门狗（调度器级 60min + agent 级默认 48h）、浏览器/MCP 清理、防「on it」占位回复（重催一次）、执行拒绝元数据识别。</p>
+
+<h2 id="b10">B10 · 配置 / 多 Agent / UI</h2>
+<div class="grid2">
+<div class="card"><div class="card-title">配置系统</div>单文件 <code>~/.openclaw/openclaw.json</code>（JSON5，原子 rename 写入，热重载 hybrid）；<b>严格校验</b>——未知键/坏值直接拒绝启动；两桶规则：根层=基础设施，<code>agents.defaults</code>=循环行为，<code>agents.entries.&lt;id&gt;</code> 覆盖；敏感键正则（/token$/i、/password/i、/api.?key/i…）命中即从 UI/API 脱敏；密钥走 SecretRef 契约。</div>
+<div class="card"><div class="card-title">多 Agent</div>Agent = 完整个人范围：工作区（AGENTS/SOUL/USER.md）+ agentDir（auth profiles、模型注册表、独立 SQLite）；bindings 把渠道路由到 agent；<b>目录冲突防护</b>：DuplicateAgentDirError（共享 agentDir 会造成凭据/会话碰撞）；副 agent OAuth 过期可读穿透主 agent 同 profile 凭据（取较新 token，不复制 refresh token）。</div>
+<div class="card"><div class="card-title">WebChat / Control UI</div>Gateway 在同端口伺服 Vite+Lit UI；WebChat RPC：<code>chat.history</code>（有界+按 messageId 补全）、<code>chat.send</code>（幂等键+expectedLeafEntryId 分支前提）、<code>chat.inject</code>（直写 assistant 注记不触发 run）；显示归一化剥离指令标签与工具 XML、NO_REPLY 省略。</div>
+<div class="card"><div class="card-title">Dashboard / 原生 App</div>workboard 扩展 + board 契约；SQLite board_tabs（chat_dock 位置、created_by、revision）+ board_widgets（挂 session_key）；会话卡片与进度草稿；macOS/iOS SwiftUI 原生 app 直连同一 WS。</div>
+</div>
+
+<h2 id="b-mvp">B11 · OpenClaw 最小可复刻骨架</h2>
+<div class="impl"><b>七个部件（按实现顺序）</b>
+<ul>
+<li><b>① 常驻 Gateway</b>：单端口 WS+HTTP；loopback 默认；connect-first 握手+设备配对+challenge 签名+幂等键。</li>
+<li><b>② 渠道抽象</b>：每渠道只做「平台事件→归一化入站事实 + 出站发送 + 会话语法」；发送统一为单一 message 工具。</li>
+<li><b>③ 路由核心</b>：resolveRoute(channel, account, peer, dmScope) → {agentId, sessionKey}；会话键语法照抄 B4。</li>
+<li><b>④ 存储</b>：SQLite 双表 session_nodes（稳定键+元数据）+ session_windows（窗口链，9 种 reason）+ transcript 表（writer-claim 事务栅栏）。</li>
+<li><b>⑤ 回合引擎</b>：入站→lane 串行→attempt 循环（模型/凭据降级重试）→prompt 组装（base+skills+memory+插件注入）→LLM 流→工具循环（可见性过滤+before_tool_call+审批）→回复塑形（NO_REPLY/去重）→交付。</li>
+<li><b>⑥ 插件面</b>：manifest（纯元数据校验）+ register(api) + 注册表消费。</li>
+<li><b>⑦ 自动化</b>：SQLite 持久 job + at/every/cron/on-exit/stream + managed job 声明式对账 + heartbeat 作为系统 job。</li>
+</ul></div>
+
+<div class="pagebreak" data-label="—— Part C ——"></div>
+
+<!-- ================================================================ -->
+<h2 id="c1">C1 · dsh Monorepo 包地图 <span class="tag" style="background:rgba(88,166,255,.15);color:var(--accent)">deepseek-ai/deepseek-harness</span></h2>
+<p>pnpm workspace 覆盖 <code>vendor/*</code>、<code>packages/*/*</code>（<b>两层目录</b>，如 packages/core/agent）、<code>native/*</code>、<code>apps/*</code>、<code>python/*</code>。host/client 两个构建面；大量生成/校验脚本（gen-cordis-catalog、verify-cordis-config、gen-persistence-catalog）。</p>
+<table>
+<tr><th>分组</th><th>包</th><th>职责</th></tr>
+<tr><td><b>core/*</b></td><td>session / agent / agent-loop / tools / system-prompt / scope / agent-tool-presentation</td><td>运行时核心词汇：事件日志+SessionHeader+surface、Agent 注册表+Inbox、ReactLoopAgent 驱动器、工具注册表+执行管线、prompt 组装、按 Agent 分层 scope 注入、PTC 呈现</td></tr>
+<tr><td><b>llm/*</b></td><td>llm / llm-deepseek / llm-pi-ai(dormant) / llm-retry / token-meter</td><td><code>ctx.llm</code> 适配器注册表+流式、原生 DeepSeek 适配器、多 provider（默认休眠）、重试、上下文压力计</td></tr>
+<tr><td><b>session/*</b></td><td>persistence(-jsonl/-sqlite) / projection(-cache) / checkpoint-policy / stats / title(-llm) / telemetry-otel / log-deepseek</td><td>会话族：持久化协调器、投影注册表、检查点策略、统计、标题、OTel</td></tr>
+<tr><td><b>session-query/*</b></td><td>session-query(-sqlite) / tool-session-query / session-log-export</td><td>语料/游标/抽取；全文检索（默认 <code>openAt: never</code>）；模型可见查询工具</td></tr>
+<tr><td><b>context/*</b></td><td>agent-instructions / time-context / tmux-context / file-reference(-local) / session-reference</td><td>上下文提供者（见 C8）</td></tr>
+<tr><td><b>compaction/* & spill/*</b></td><td>compaction / -basic / -tool-result-pruner / command-compact；spill / spill-local / spill-policy</td><td>压缩接缝+默认实现+剪枝+命令；超限工具结果落盘（见 C9）</td></tr>
+<tr><td><b>storage/* & credentials/*</b></td><td>storage(-json/-sqlite/-domain)；credentials(-local)/authorization</td><td>KV 存储 hub+zod 域层；凭据键空间+分层解析</td></tr>
+<tr><td><b>skill/*</b></td><td>skill / skill-filesystem / tool-skill / skill-badge</td><td>provider 注册表+本地发现+模型可见工具</td></tr>
+<tr><td><b>工具族</b></td><td>tool-fs(-search)/fs-sandbox/tool-str-replace-editor；tool-bash/pwsh(±sandbox/persistent)/terminal-*；tool-web/todo/goal/ask-user/jobs/lsp；mcp-client</td><td>文件、shell、web、待办、目标、提问、后台任务、LSP、MCP</td></tr>
+<tr><td><b>subagent/*</b></td><td>subagent / spawn-in-process / fork-in-process / tool-subagent(-control/-report) / subagent-acp/claude-code/codex/dsh-sdk</td><td>子代理注册表与多种后端（含接管 Claude Code/Codex！）</td></tr>
+<tr><td><b>interaction/* & sandbox/*</b></td><td>user-approval / permission-presets / user-questions / commands；sandbox-local/policy/windows-acl + native/landlock-run</td><td>审批（fail-closed）、权限档位、提问、斜杠命令；沙箱策略+三平台后端</td></tr>
+<tr><td><b>preset/* & bundle/*</b></td><td>agent-presets(standard/minimal/cordis/ptc) / persona；base/web-app/headless/sdk-app/sdk-minimal/acp-app</td><td>agent 平面组合；host 平面组合（每份是一个 cordis.patch.yml）</td></tr>
+<tr><td><b>api/* client/* host/*</b></td><td>gateway/session-controller；数十个 ui-* React 模块+connection+store+web；webserver/frontend-static/plugin-inventory</td><td>Web 的 HTTP/WS 面；浏览器 UI；宿主服务</td></tr>
+</table>
+
+<h2 id="c2">C2 · Cordis 微内核：Context / Service / waterfall</h2>
+<div class="codeview cvtoggle"><input type="radio" name="cv15" id="cv15-s" checked><input type="radio" name="cv15" id="cv15-p"><div class="cv-bar"><span class="cv-title">vendor/cordis · 内核三件套</span><label for="cv15-s">源码</label><label for="cv15-p">伪代码</label></div><pre class="cv src"><code><span class="cm">// Context 是运行时 Proxy(vendor/cordis/src/context.ts):</span>
+<span class="cm">//   普通属性读走服务解析器; extend()/isolate()/intercept() 派生 scoped 子上下文</span>
+<span class="cm">//   [symbols.isolate]: Dict&lt;symbol&gt;  服务名→scope label</span>
+<span class="cm">//   [symbols.intercept]            服务名→配置拦截</span>
+<span class="cm">// 五种事件派发模式(events.ts:32):</span>
+<span class="cm">//   'emit' | 'parallel' | 'serial' | 'bail' | 'waterfall'</span>
+<span class="cm">//   waterfall: 每个监听器拿到 next() —— 本仓库最核心的组合原语</span>
+<span class="cm">// 插件形态:</span>
+<span class="kw">export const</span> name = <span class="st">"..."</span>
+<span class="kw">export const</span> inject = [...]
+<span class="kw">export const</span> Config = /* schemastery */
+<span class="kw">export function</span> <span class="fn">apply</span>(ctx, config) {...}
+<span class="cm">// 服务声明合并:</span>
+<span class="kw">class</span> X <span class="kw">extends</span> Service {}
+<span class="kw">declare module</span> <span class="st">'@deepseek-ai/cordis'</span> {
+  <span class="kw">interface</span> Context { x: X }        <span class="cm">// ctx.x 直接可用</span>
+  <span class="kw">interface</span> Events { <span class="st">'x:event'</span>: ... }  <span class="cm">// @mode waterfall</span>
+}</code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · 微内核容器（照此可实现你自己的）</span>
+Context = Proxy 对象:
+    读 ctx.某服务 → 服务解析器找实现(按 scope 隔离)
+    ctx.extend() / isolate() / intercept() → 派生 scoped 子上下文
+        <span class="c">// isolate: 同一服务在不同 scope 有不同实例
+        //   (如每个会话一个 compaction realm)</span>
+事件总线五种模式:
+    emit(广播) / parallel(并发) / serial(串行) / bail(一票否决)
+    waterfall(链式加工: 每个监听器收到上家产物, 调 next(改写后) 传给下家)
+        <span class="c">// waterfall 是灵魂: agent/pre-step、agent/request、llm/stream、
+        //   tools/pre-execute 全是 waterfall —— 框架自己只提供默认链头</span>
+插件 = { name, 依赖服务表 inject, 配置 Schema, apply(ctx, config) }
+服务 = class extends Service + 声明合并(ctx.x 类型直接可用)
+注册时机互相等待(inject 声明的服务就绪才调用 apply)</code></pre></div>
+
+<h2 id="c3">C3 · 组合即补丁：bundle → profile → home → overlay</h2>
+<div class="codeview cvtoggle"><input type="radio" name="cv16" id="cv16-s" checked><input type="radio" name="cv16" id="cv16-p"><div class="cv-bar"><span class="cv-title">apps/cli/src/profile-boot.ts:136-143, 209+ · 补丁栈</span><label for="cv16-s">源码</label><label for="cv16-p">伪代码</label></div><pre class="cv src"><code><span class="cm">// runProfile(): 补丁栈按序应用:</span>
+<span class="cm">//   bundle 层(dsh.profile.bundles 顺序)</span>
+<span class="cm">//   → profile 自己的 cordis.patch.yml</span>
+<span class="cm">//   → $DSH_HOME/cordis.patch.yml(home 层)</span>
+<span class="cm">//   → --patch overlays → 遥测开关</span>
+<span class="cm">// composeLive()(L243) 用于 HMR 热重载; bundle 层永远在用户层之下</span>
+<span class="cm">// profile 根 cordis.yml 每次启动被重写为 [] —— 整棵树是补丁叠出来的</span>
+<span class="cm">// 补丁语义(bundle/base/cordis.patch.yml:1-14):</span>
+<span class="cm">//   一个 - insert: 列表; 后续层按 id 定位整行替换 config(不合并!)</span>
+<span class="cm">//   可 disabled: !!js &lt;表达式&gt; 做平台门控</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · 组合式产品</span>
+启动(profile):
+    补丁栈 = [base bundle] + [profile 的 patch] + [home 的 patch] + CLI overlays
+    对 每层 in 补丁栈:                 <span class="c">// 从底到顶</span>
+        对 每行 in 层:
+            若 该行 id 已被更早层定义: 整行替换其 config(不深度合并)
+            若 !!js 平台表达式为假: 跳过
+            否则: 挂载该插件(apply)
+    HMR: 配置变了 → composeLive() 重建上半栈, bundle 层不动
+<span class="cm">// 两个"平面":
+//   host 平面(base bundle): 注册表/沙箱/审批/持久化/模型路由 —— 全局一份
+//   agent 平面(preset): 每个会话按 scope 亲缘挂载 —— 工具面/prompt/压缩
+//   规矩: 凡提供服务的行必须放进带 isolate: 的 cordis:group(entry-local
+//   realm), 否则发布到根 realm 造成进程级冲突!</span></code></pre></div>
+<h4>四个内置 preset（agent 平面）</h4>
+<table>
+<tr><th>preset</th><th>组合内容</th><th>特点</th></tr>
+<tr><td><code>standard</code></td><td>persona + agent-instructions + 一次性 bash/pwsh + fs 工具 + jobs + skills + goal + plan-mode(isolate) + compaction 组(8192/4096/1024) + delegation 组(subagent/fork/workflow/ralph) + ask-user/todo/web</td><td>默认全功能；注释反复强调「tokenMeter 故意不进 realm」「subagents 注册表在 host 平面」</td></tr>
+<tr><td><code>cordis</code></td><td>standard 全量 + <b>tool-cordis</b>（读/挂/卸载运行时插件）+ 组合编写 skill</td><td><b>agent 能自改组合</b>——信任边界等同 shell 权限</td></tr>
+<tr><td><code>minimal</code></td><td>persona <code>complete:true</code>（整段 system prompt 固定）+ <code>includeRuntimeContext:false</code> + 持久 PTY shell 栈 + 本地无沙箱 fs</td><td>仅两三类工具、无压缩——最小信任面</td></tr>
+<tr><td><code>ptc</code></td><td>standard 全量 + tool-presentation <code>mode: ptc</code></td><td><b>模型不再逐个调工具，而是写一段 TS 程序经 run_code 一次执行</b></td></tr>
+</table>
+
+<h2 id="c4">C4 · Agent 运行时：ReactLoopAgent 的 turn/step</h2>
+<div class="codeview cvtoggle"><input type="radio" name="cv17" id="cv17-s" checked><input type="radio" name="cv17" id="cv17-p"><div class="cv-bar"><span class="cv-title">packages/core/agent-loop/src/agent.ts + inbox.ts · 循环与收件箱</span><label for="cv17-s">源码</label><label for="cv17-p">伪代码</label></div><pre class="cv src"><code><span class="cm">// Inbox(core/agent/src/inbox.ts:25): 双队列 next-turn / next-step 的</span>
+<span class="cm">//   "replay-once 投影"。每次变更先 session.append('agent/inbox/spliced')</span>
+<span class="cm">//   落盘再改内存投影(mutate L158-193)</span>
+<span class="cm">// claim(target, turn)(L71-78): 先清 next-step; target==='next-turn'</span>
+<span class="cm">//   再取队首一条 turn 消息</span>
+<span class="cm">// 输入: send()/followup()/steer()/inject()(agent.ts:122-141); cancel() 清空+abort</span>
+<span class="cm">// runMaintenance()(L151): 空闲期维护事务(手动压缩用它串行化)</span>
+<span class="cm">// turn()(L255): session.append('turn/start') → 内层 while 每 step:</span>
+<span class="cm">//   inbox.claim() → ctx.systemPrompt.assemble() →</span>
+<span class="cm">//   runtimeContext.project()(KV-cache 安全快照) →</span>
+<span class="cm">//   agent/pre-step waterfall(默认 {kind:'enter',messages}, 插件可改写/reject)</span>
+<span class="cm">//   空批首步直接完成 turn 不耗模型调用(L283-286)</span>
+<span class="cm">// step()(L341): renderPrompt → buildRequest(L444):</span>
+<span class="cm">//   读持久化 session.requestHeader() → agent/request waterfall</span>
+<span class="cm">//   (插件提议 provider/model/effort L478-481) → prepareCall 绑定适配器代数</span>
+<span class="cm">//   → 写 request/header(reason: initial/resume/change/series L507-518)</span>
+<span class="cm">//   请求体 deepFreeze + markAgentLoopRequest —— 请求是会话日志的纯函数,</span>
+<span class="cm">//   监听器只能读不能改</span>
+<span class="cm">// 流式(L363-427): 每 chunk session.append('assistant/chunk')(token级回放);</span>
+<span class="cm">//   BlockAssembler 聚合; 中断落 assistant/message{interrupted:true};</span>
+<span class="cm">//   错误走 agent/request-error waterfall 决定重试</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · dsh 的循环（与 CC 最大的差别: 一切皆事件落盘）</span>
+Inbox = { 下一turn队列, 下一step队列 }     <span class="c">// 双队列消息调度</span>
+    任何变更: 先追加事件 agent/inbox/spliced 到日志 → 再改内存
+    claim(目标): 取出本步批(先清step队列; next-turn 再取一条turn消息)
+turn():
+    追加事件 turn/start
+    while 有 step:
+        批 = inbox.claim()
+        systemPrompt = 组装()                    <span class="c">// 每步组装</span>
+        runtimeContext = 投影(缓存安全快照)       <span class="c">// 变化才重发</span>
+        批 = agent/pre-step waterfall(批)        <span class="c">// 插件可注入/拒绝</span>
+        若 批为空 且 是首步: 完成 turn(不调模型!)
+        step():
+            prompt = 渲染(systemPrompt)
+            请求 = buildRequest():
+                路由 = agent/request waterfall(插件提议 provider/model)
+                冻结请求(deepFreeze) ← <b>请求=日志的纯函数</b>
+                追加事件 request/header + request/context
+            async for chunk in llm.stream(请求):
+                追加事件 assistant/chunk         <span class="c">// token 级回放</span>
+            追加事件 assistant/message(带usage)
+            若 无工具调用: 完成 turn
+            executeToolCalls():                   <span class="c">// 见 C6</span>
+                exclusive 屏障串行 / parallel 有界滚动池
+                结果按模型序提交, 每个追加事件 tool/result(surfaceOp)</code></pre></div>
+
+<h2 id="c5">C5 · 事件溯源会话：日志即真相，投影即视图</h2>
+<div class="codeview cvtoggle"><input type="radio" name="cv18" id="cv18-s" checked><input type="radio" name="cv18" id="cv18-p"><div class="cv-bar"><span class="cv-title">packages/core/session/src/{types,surface}.ts · 事件与表面</span><label for="cv18-s">源码</label><label for="cv18-p">伪代码</label></div><pre class="cv src"><code><span class="cm">// SessionEventMap(types.ts:216) merge-extensible; 全量 75 个事件类型</span>
+<span class="cm">//   由脚本生成(known-event-types.ts:22)</span>
+<span class="cm">// 未知事件类型必须带 ignorable 标记, 否则读路径拒绝(文件头 8-21)</span>
+<span class="cm">// SessionHeader(types.ts:56): version(=0) · id · createdAt · cwd ·</span>
+<span class="cm">//   parentSession(fork 血缘) · seedLength(继承前缀边界) ·</span>
+<span class="cm">//   origin:'subagent' · delegationDepth(递归预算跨重启) ·</span>
+<span class="cm">//   agentPreset(resume 必须还原同一组合!)</span>
+<span class="cm">// surface.ts: 只有三类事件进模型可见面:</span>
+<span class="cm">//   user/message · assistant/message · tool/result(L15-19)</span>
+<span class="cm">//   且必须带 surfaceOp('append' | 'replace')</span>
+<span class="cm">// deriveEventMessage()(L83-114) 唯一投影规则 —— verbatim 直通,</span>
+<span class="cm">//   禁止加框架; compaction 摘要用 replace 遮蔽旧区间("shadow")</span>
+<span class="cm">// session-projection: ProjectionDefinition = key + stateSchema(zod)</span>
+<span class="cm">//   + init(header) + apply(state,event) —— 纯同步 fold, 注册进</span>
+<span class="cm">//   ctx.sessionProjections, 框架 eagerly 驱动所有 unit + 缓存水位</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · 事件溯源会话（dsh 最值得抄的部分）</span>
+事件日志(append-only, zstd帧JSONL):
+    事件类型 75 种(turn/start|end, step/start|end, user/message,
+      assistant/chunk, assistant/message, tool/call, tool/result,
+      request/header|context, agent/inbox/spliced, compaction/*, approval/*...)
+    未知类型必须标记 ignorable 否则拒绝读取   <span class="c">// 前向兼容</span>
+SessionHeader: 版本/id/时间/cwd/fork血统/继承前缀边界/子代理来源/
+    递归深度(防无限套娃, 跨重启有效)/preset名(resume必须还原同一组合)
+<b>surface(模型可见面)</b>: 只有 user/message · assistant/message · tool/result
+    三类事件投影成消息; 每个带 surfaceOp:
+      append  → 追加为新消息
+      replace → 遮蔽旧区间(压缩摘要) —— 旧事件仍在日志里!
+投影(Projection): {key, zod状态Schema, init(header), apply(状态,事件)}
+    = 纯同步 fold; 注册后框架自动驱动+缓存+变更通知
+    (tokenMeter/time-context/tmux/turnBoundary/UI全是投影)
+resume: 重放日志重建一切; fork: 以平衡前缀作种子
+checkpoint策略: llm/stream 前先 flush 会话(fail-closed);
+    顶层工具副作用前 flush; pre-step 前 flush 上一步产物</code></pre></div>
+
+<h2 id="c6">C6 · 工具系统：注册表 + 事件管线 + PTC</h2>
+<div class="codeview cvtoggle"><input type="radio" name="cv19" id="cv19-s" checked><input type="radio" name="cv19" id="cv19-p"><div class="cv-bar"><span class="cv-title">packages/core/tools/src/index.ts · 定义与管线</span><label for="cv19-s">源码</label><label for="cv19-p">伪代码</label></div><pre class="cv src"><code><span class="cm">// ctx.tools 事件管线(L134-200):</span>
+<span class="cm">//   tools/pre-execute(waterfall: allow/deny/ask) →</span>
+<span class="cm">//   tools/execute(around: 可换signal, 做timeout/retry/metrics) →</span>
+<span class="cm">//   tools/post-execute(改写/富化结果) →</span>
+<span class="cm">//   tools/result(emit, 冻结快照) → tools/change</span>
+<span class="cm">// ToolDefinition(L214-280): JSON Schema(defineTool/schemastery) ·</span>
+<span class="cm">//   output: ToolOutputDefinition(canonical JSON value + render()投影</span>
+<span class="cm">//   + presentationMeta()) · execute(args, exec) · finalizeContent ·</span>
+<span class="cm">//   timeoutMs(由 timeout-policy 执行, 绝不发给模型) ·</span>
+<span class="cm">//   isConcurrencySafe(args) · presentCall/presentResult(纯函数UI卡片)</span>
+<span class="cm">// schema 白名单只出 name/description/parameters</span>
+<span class="cm">// 并发: exclusive 是屏障; parallel 进有界滚动池</span>
+<span class="cm">//   (agentLoop.config.maxParallelToolCalls); 派发可重叠,</span>
+<span class="cm">//   policy/结果/结果上下文严格按模型序提交(commitReady L147-161)</span>
+<span class="cm">// abort: 为未启动调用补写合成错误结果保证回放有效</span>
+<span class="cm">// PTC(src/ptc.ts createRunCodeTool): 模型只能直接调 run_code,</span>
+<span class="cm">//   写 TS/Python 程序一次执行(SDK_RENDERERS)</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · 工具管线（把权限/超时/重试全做成事件）</span>
+注册表 ctx.tools:
+    工具定义 = {
+      schema(只暴露 name/description/parameters 给模型),
+      execute(参数, 执行上下文),
+      isConcurrencySafe(参数) → exclusive(屏障) 或 parallel(入池),
+      timeoutMs(策略层执行, 模型不可见),
+      output: 规范JSON值 + render(投影成模型可见内容) + presentation(纯函数UI卡片)
+    }
+执行管线(全部是事件, 插件可在任意环节介入):
+    pre-execute(waterfall): allow / deny / ask → 审批
+    execute(around): 换signal / 超时 / 重试 / 打点
+    post-execute: 改写或富化结果
+    result(emit): 冻结快照 + 落事件日志(tool/result, surfaceOp)
+并发: exclusive 屏障串行; parallel 有界滚动池;
+    并行派发但<b>按模型给出的顺序提交结果</b>(保证日志可重放语义)
+abort: 未启动的调用补写合成错误结果(否则回放会缺 result 而崩)
+PTC 模式: 模型不逐个调工具 → 只有一个 run_code 工具, 写程序一次执行
+    <span class="c">// 好处: 程序里有循环/条件, 一次往返干完 N 步活</span></code></pre></div>
+
+<h2 id="c7">C7 · LLM 层与 KV-cache 纪律</h2>
+<ul>
+<li><b>ctx.llm</b>（TypertRemoteService，可跨 Remote 线）：适配器注册表 + 流式 API；<code>LlmAdapter</code> 抽象 <code>stream()</code> 必选 + <code>prepareCall</code>（把「精确模型元数据+本次派发」绑定到同一代，防 settings 热更撕裂）；<code>registerAdapter</code> 返回可 <code>replace(providers)</code> <b>原子换路由</b>的 handle（dormant 插件靠空数组→有路由切换）。</li>
+<li><b>llm/stream waterfall</b> 拦截所有模型调用：llm-retry / llm-replay(测试) / checkpoint-policy 都挂这里；<code>PreparedLlmCall</code> = 冻结 config + retryPolicy + 上下文元数据(含 contextWindow) + stream()。</li>
+<li><b>消息模型</b>：<code>Message{id, role, content, source}</code>；<code>MessageSourceMap</code> merge-extensible（user | plugin | model | tool，插件自加 kind）；<b>ContextForm</b> 语义分类 <code>instructions|catalog|snapshot|notice|relay|recall</code>——UI 呈现按语义而非视觉词汇。</li>
+<li><b>KV-cache 纪律清单</b>（散布全仓的设计约束）：loop 请求 deepFreeze 且可重建；fork 子代理<b>故意不选模型</b>以保持前缀命中（standard preset L195-197 注释）；compaction 用 surface replace 而非重写整段；plan-mode <b>保持工具目录不变</b>（「以稳定 request cache」）；request/header 的 <code>series</code> reason 显式标记请求系列边界；runtime-context「cache-safe 快照 + 变更才重发」。</li>
+<li><b>token-meter</b>：replay-aware 单一计量服务；锚定最近一次成功调用的 header/surface/usage（MeasurementAnchor）；surface-fold 提供 planSurfaceTokens/commitSurfaceTokens（压缩影子计价）；注册 contextPressure/contextBreakdown 投影给浏览器读。</li>
+</ul>
+
+<h2 id="c8">C8 · 上下文提供者：共同模式与五个实例</h2>
+<div class="beginner"><b>共同模式</b>：监听 <code>agent/pre-step</code>（或 <code>tools/result</code>）→ 把内容做成带 <code>source.kind</code> 的 UserMessage 注入 claimed 批或 next-step inbox → 状态经 session-projection unit 折叠。<b>这就是 dsh 版的「记忆/上下文」扩展协议</b>——任何上下文能力（包括第三方记忆）都照这个模子写。</div>
+<table>
+<tr><th>包</th><th>做什么</th><th>细节</th></tr>
+<tr><td><code>agent-instructions</code></td><td>AGENTS.md/CLAUDE.md 基线+增量</td><td>首请求前 durable 基线（框架烤进 content）；read/write/edit 触碰→step 边界缓冲→去重节流→异步投影串成 projectionTails 链防乱序；syncInbox 保证 next-step 至多一条待定</td></tr>
+<tr><td><code>time-context</code></td><td>时间读数</td><td>每 turn 首步注入时间+距上一模型可见消息耗时+浏览器时区派生；refreshIntervalMs 节流</td></tr>
+<tr><td><code>tmux-context</code></td><td>终端上下文</td><td>每 turn 首步跑 <code>tmux display-message</code>，用 #{pane_tty} 对照本进程控制终端确认真的在 pane 里；仅渲染状态变化时重注入；失败 no-op</td></tr>
+<tr><td><code>file-reference</code></td><td>@ 路径补全</td><td>ctx.fileReferences 服务 + 模型指引</td></tr>
+<tr><td><code>session-reference</code></td><td>跨会话引用</td><td>URI mention → 精确读+投影+预算（MAX_REFERENCE_BYTES/MAX_REFERENCES）→ durable recall-form 上下文</td></tr>
+</table>
+
+<h2 id="c9">C9 · 压缩 / 溢出 / 存储 / 凭据</h2>
+<div class="grid2">
+<div class="card"><div class="card-title">Compaction 三件套 + 影子计价</div><code>CompactionEngine extends Service</code>（ctx.compaction）：compactIfNeeded(trigger: pressure|context-overflow) / compactNow（手动，经 runMaintenance 空闲串行化，durable start 即锁）/ compactRegion（边必须 tool-pairing balanced）。事件 compaction/start|summary|end|prune 全 log-only；<b>影子计价协议</b>：surface replace 的价格由紧邻其前的计价事件声明（shadowedTokenCount），纯消费者可直接扣减。</div>
+<div class="card"><div class="card-title">Spill：故意最小</div><code>ctx.spillStore</code> 只有一个方法 <code>saveText(): SpillRef{locator, bytes, retrievalHint}</code>——超限工具结果全文落会话私有 artifact，返回模型可读定位符；<b>故意不拥有</b>保留策略/替换/检索（那是 spill-policy/output-retention 的事）；spill 失败绝不把成功调用变 isError。</div>
+<div class="card"><div class="card-title">Storage hub + 域层</div>ctx.storage 自己不做 IO——backend 注册表 + StorageForms 挂载点；storage-domain 是唯一 form：zod 校验 KV 域（DomainSpec: global|table），按域名路由到后端，变更发 DomainChanged；storage-json 默认后端（原子写+per-record unit 版本戳）。</div>
+<div class="card"><div class="card-title">Credentials 两键空间</div>CredentialRef(POSIX env 名) 与 CredentialKey(&lt;scope&gt;/&lt;id&gt;) 不相交；记录为 ApiKeyRecord{key?,env?} 或不透明 GrantRecord；<b>分层优先级：继承进程环境(只读,最高) &gt; $DSH_HOME/.credentials.yaml(跨进程写锁+保留注释+热发布) &gt; cwd/.env &gt; $DSH_HOME/.env</b>；托管文档绝不物化进进程环境。</div>
+</div>
+
+<h2 id="c10">C10 · UI / native / python</h2>
+<ul>
+<li><b>UI 是 Web</b>：apps/cli 只是启动器（profile-boot 组补丁栈 + boot + 信号处置，无内嵌 TUI）；宿主 webserver(node:http 路由+gzip+index 注入+SSE) + typert-gateway/session-controller 把 host 服务暴露给浏览器；<b>UI 从 session projections 派生</b>——数十个 ui-* React 模块消费投影快照与变更流；工具卡片是纯投影（ToolCallView/ToolResultView），因此<b>回放与直播同构</b>。</li>
+<li><b>bundle/web-app</b> 定义浏览器 roster；<b>bundle/headless</b> 无 UI 一次性任务（位置参数→直接建 Agent→打印 durable 结果）。</li>
+<li><b>native/landlock-run</b>：Linux「先自限再 exec」启动器（唯一原生目录），被 sandbox-local 消费为沙箱执行原语；Windows 侧 sandbox-windows-acl 纯 JS ACL。</li>
+<li><b>python/</b>：sdk（高层 turns API + 底层 JSON-RPC over stdio NDJSON）+ sdk-runtime（打包好的 dsh 可执行+原生 sidecar 作为 Python 分发根）；默认 <code>dsh --profile sdk</code>；每次启动必须显式指定 Harness home，<b>Python 绝不静默读 ~/.dsh</b>。</li>
+</ul>
+
+<h2 id="c-mvp">C11 · dsh 最小可复刻蓝图（五件套）</h2>
+<div class="impl"><b>按依赖顺序</b>
+<ul>
+<li><b>① 插件容器</b>：emit/serial/waterfall 事件总线 + scope 隔离（Context 声明合并 + Service 基类 + isolate realm）。</li>
+<li><b>② 组合即数据</b>：空根 + 分层 patch.yml（bundle→profile→home→overlay），行级 id 寻址、!!js 平台门控；host 平面与 agent 平面分离，服务行进 isolate 组。</li>
+<li><b>③ 事件溯源会话</b>：append-only SessionEventMap + 三类 surface 事件 + surfaceOp: append|replace；一切派生态（消息历史/token 压力/turnBoundary/审批策略）都是纯同步投影；JSONL+zstd 落盘；checkpoint 在模型请求与工具副作用前 flush。</li>
+<li><b>④ 循环</b>：inbox（双队列、durable splice）→ agent/pre-step 折叠上下文 → agent/request 提议路由 → 流式（chunk 逐条落盘）→ 工具调度（exclusive/parallel、模型序提交）→ 回到 step/turn 边界；一切扩展点都是 waterfall/emit 事件。</li>
+<li><b>⑤ 周边三件套</b>：每个能力做成「Service Definition + 默认实现 + 策略插件」——compaction、spill、storage、credentials、skills、sandbox、approval、session-query。</li>
+</ul></div>
+
+<div class="pagebreak" data-label="—— Part E ——"></div>
+
+<!-- ================================================================ -->
+<h2 id="e1">E1 · Hermes 形态与入口 <span class="tag" style="background:rgba(188,140,255,.15);color:var(--purple)">NousResearch/hermes-agent</span></h2>
+<p>Python 为主体的<b>自我改进 CLI Agent</b>（"The agent that grows with you"），MIT 协议。与前三位最大的区别：<b>学习回路（记忆+技能）是一等公民</b>，框架的一切都为「越用越懂你」服务。核心类 <code>AIAgent</code>（run_agent.py:422，文件 9402 行）；会话循环在 <code>agent/conversation_loop.py</code>。</p>
+<div class="grid2">
+<div class="card"><div class="card-title">入口矩阵</div>
+<ul>
+<li><b>经典 REPL</b>：prompt_toolkit 固定底部输入区（cli.py:60-67）+ rich 渲染（Console/Panel/Markdown）；会话浏览器用 curses（main.py:1244-1346）。</li>
+<li><b>现代 TUI</b>：Ink+React（ui-tui/，TypeScript），经 tui_gateway/ 与 Python 宿主桥接——main.py:315 在 argparse 之前做 TUI 决策，<code>--cli</code> 强制经典版。</li>
+<li><b>One-shot</b>：<code>-q/-Q/--oneshot</code>（cli.py:1373-1430）：退出前持久化 session、等待后台任务排干（oneshot_completion_wait_seconds）。</li>
+<li><b>守护形态</b>：gateway/（Telegram/Slack/Discord 等消息平台守护）、acp_adapter/（ACP 协议服务器）、mcp_serve.py（把 Hermes 自己暴露为 MCP）、batch_runner.py、cron/。</li>
+</ul></div>
+<div class="card"><div class="card-title">值得抄的三个工程细节</div>
+<ul>
+<li><b>非主线程 input() 兜底</b>（cli.py:10946）：Windows 上裸 input() 会死锁，_prompt_text_input 专门处理——多线程 CLI 的经典坑。</li>
+<li><b>工具发现 AST 扫描 + 缓存</b>：discover_builtin_tools 用 AST 找顶层 registry.register 调用，结果按 (mtime_ns, size) 缓存到 ~/.hermes/cache/——启动加速范本。</li>
+<li><b>多 home 用 ContextVar 而非环境变量</b>：HERMES_HOME 是 ContextVar 覆盖（hermes_constants.py:17-47），防线程丢失时泄漏默认 profile 的技能/身份（system_prompt._agent_home() 三重回退）。</li>
+</ul></div>
+</div>
+
+<h2 id="e2">E2 · Agent 循环：turn 上下文 + 受预算约束的 while</h2>
+<div class="codeview cvtoggle"><input type="radio" name="cve1" id="cve1-s" checked><input type="radio" name="cve1" id="cve1-p"><div class="cv-bar"><span class="cv-title">agent/conversation_loop.py:1899-2143 · 一个 turn 的执行</span><label for="cve1-s">源码</label><label for="cve1-p">伪代码</label></div><pre class="cv src"><code><span class="cm">// run_conversation(L1899) 流程:</span>
+<span class="cm">// 1. decode_moa_turn (多模型聚合轮次)</span>
+<span class="cm">// 2. build_turn_context(agent/turn_context.py): stdio守护 · 重试计数复位 ·</span>
+<span class="cm">//    消息清洗 · todo/nudge 注水 · system prompt restore-or-build ·</span>
+<span class="cm">//    预压缩 · pre_llm_call 插件钩子 · 外部记忆预取 · 崩溃恢复持久化</span>
+<span class="cm">// 3. 主循环(L2094):</span>
+while ((api_call_count &lt; agent.max_iterations
+       and agent.iteration_budget.remaining &gt; <span class="nu">0</span>)
+      or agent._budget_grace_call):
+    <span class="cm">// 流式调用: _interruptible_streaming_api_call(run_agent.py:7101)</span>
+    <span class="cm">//   stream writer 单写者协议(L6870-6945); SSE 解析与错误分类在</span>
+    <span class="cm">//   chat_completion_helpers._parse_provider_sse_events / ProviderStreamError</span>
+    <span class="cm">// tool_calls 规范化: _canonicalize_tool_call_arguments /</span>
+    <span class="cm">//   _canonicalize_api_tool_calls(L1339/1411); 非法工具名 → 专用错误内容</span>
+    <span class="cm">// 终止: 无 tool_calls → final_response</span>
+    <span class="cm">//   length 截断 → length_continue_retries; 截断 tool-call → 专用重试</span>
+    <span class="cm">//   外层异常 → _MAX_OUTER_LOOP_ERRORS; 压缩 → max_compression_attempts=3</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · Hermes 的 turn</span>
+一个turn(用户消息):
+    <span class="c">—— 前奏 build_turn_context（一次性做完所有准备）——</span>
+    守护 stdio; 复位重试计数; 清洗消息
+    注水: todo 提醒 / 记忆nudge(每10轮)
+    system prompt = 有缓存就复用, 没有就构建(见 E3)
+    若接近压缩线: 预压缩
+    插件钩子 pre_llm_call; 外部记忆 provider 异步预取(8s超时)
+    崩溃恢复持久化(防中断丢状态)
+    <span class="c">—— 主循环（三重预算约束）——</span>
+    while api调用数 &lt; max迭代数 且 迭代预算有余量:
+        流式调模型(可中断; SSE逐事件解析, 错误分类)
+        规范化 tool_calls(参数类型强转/JSON字符串修复/非法工具名报错)
+        若 无工具调用: 返回最终回复
+        执行工具批(顺序或并发, 见 E4)
+    预算耗尽: 打印 "⚠️ Iteration budget exhausted" 并收尾
+    <span class="c">—— 错误预算全部有上限 ——</span>
+    length截断重试 ×N · 截断tool-call重试 ×N · 外层异常 ×N · 压缩尝试 ≤3</code></pre></div>
+
+<h2 id="e3">E3 · 三层 System Prompt：为 prefix cache 而生的分层</h2>
+<div class="codeview cvtoggle"><input type="radio" name="cve2" id="cve2-s" checked><input type="radio" name="cve2" id="cve2-p"><div class="cv-bar"><span class="cv-title">agent/system_prompt.py:435 · stable → context → volatile</span><label for="cve2-s">源码</label><label for="cve2-p">伪代码</label></div><pre class="cv src"><code><span class="cm">// build_system_prompt_parts(L435) 顺序 stable → context → volatile, "\n\n" join:</span>
+<span class="cm">// stable:  SOUL.md(或 DEFAULT_AGENT_IDENTITY) → 帮助指引 →</span>
+<span class="cm">//          TASK_COMPLETION_GUIDANCE → PARALLEL_TOOL_CALL_GUIDANCE →</span>
+<span class="cm">//          工具指引(MEMORY/SESSION_SEARCH/SKILLS/KANBAN) → STEER_CHANNEL_NOTE →</span>
+<span class="cm">//          tool_use_enforcement(按模型族) → execution_guidance →</span>
+<span class="cm">//          Alibaba 模型名 workaround → 环境提示(WSL/Termux) → coding posture</span>
+<span class="cm">// context: coding workspace 快照 + trailing · caller system_message ·</span>
+<span class="cm">//          context files(AGENTS.md/.cursorrules, cap 随 context window 缩放)</span>
+<span class="cm">// volatile: skills 索引 → MEMORY.md 快照 → USER.md → 外部 provider 块 →</span>
+<span class="cm">//          插件 section(冻结快照 _frozen_plugin_prompt_sections) →</span>
+<span class="cm">//          时间戳行(Conversation started: + 会话ID/Model/Provider/Platform)</span>
+<span class="cm">// 整个 prompt 每 session 构建一次, 缓存于 agent._cached_system_prompt,</span>
+<span class="cm">// 仅压缩时 invalidate_system_prompt(L1057) 重建 —— 文档反复强调 byte-stable</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · 三层 prompt（按"变化频率"排列，越稳越靠前）</span>
+stable 层(几乎永不变):
+    人格(SOUL.md) · 任务完成指引 · 并行工具指引 · 各工具用法文档
+    <span class="c">// 放最前 = 缓存最深 = 跨会话都能命中</span>
+context 层(随工作区变):
+    编码工作区快照 · 调用方传入的system_message · AGENTS.md/.cursorrules
+    <span class="c">// 注入上限随上下文窗口大小缩放</span>
+volatile 层(会话内固定、跨会话变):
+    技能索引 → 记忆冻结快照(MEMORY/USER) → 外部记忆块 → 插件段(冻结快照)
+    → 时间戳行(会话ID/模型/平台)
+    <span class="c">// "冻结快照"三连: 记忆/插件段都在构建时定格 → 会话内字节不变</span>
+缓存策略: 每会话构建一次, 存 agent._cached_system_prompt
+    只有压缩时才 invalidate 重建
+    <span class="c">// 与 CC 的 SYSTEM_PROMPT_DYNAMIC_BOUNDARY 异曲同工,
+    //   但 Hermes 更激进: 干脆整段会话内不变</span></code></pre></div>
+
+<h2 id="e4">E4 · 工具系统：自注册表 + 可用性探测 + 并行批</h2>
+<div class="codeview cvtoggle"><input type="radio" name="cve3" id="cve3-s" checked><input type="radio" name="cve3" id="cve3-p"><div class="cv-bar"><span class="cv-title">tools/registry.py:120-416 · 注册中心</span><label for="cve3-s">源码</label><label for="cve3-p">伪代码</label></div><pre class="cv src"><code><span class="cm">// 工具定义 = 顶层 registry.register(name=..., toolset=..., schema=...,</span>
+<span class="cm">//   handler=..., check_fn=..., emoji=..., max_result_size_chars=...,</span>
+<span class="cm">//   dynamic_schema_overrides=...)  —— 无装饰器无基类</span>
+<span class="cm">// ToolEntry(L208, __slots__): name/toolset/schema/handler/check_fn/</span>
+<span class="cm">//   requires_env/is_async/description/emoji/max_result_size_chars/...</span>
+<span class="cm">// schema = OpenAI function 格式; system_prompt.py:1134 直接序列化注入</span>
+<span class="cm">// check_fn: 30s TTL 缓存 + 60s "last-good" 瞬态失败宽限(L246-416)</span>
+<span class="cm">//   —— 防 Docker 探测抖动瞬间剥掉整个 toolset</span>
+<span class="cm">// 并发(agent/tool_executor.py): sequential | concurrent 双路径;</span>
+<span class="cm">//   worker 上限 _max_concurrent_workers(terminal/file 各有并行度,</span>
+<span class="cm">//   image_generate 专属 cap); _NEVER_PARALLEL_TOOLS 黑名单;</span>
+<span class="cm">//   批量 deadline timeouts.tools.concurrent_batch; 错误体截断 2048 字符</span>
+<span class="cm">// 入口 model_tools.py:1240 handle_function_call + coerce_tool_args(:845)</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · 工具注册表（Python 里最简洁的一种设计）</span>
+定义工具 = 文件顶层调用 registry.register(
+    name, toolset, schema(OpenAI格式), handler,
+    check_fn(可用性探测, 如"docker 在吗?"),
+    emoji(UI显示), max_result_size_chars(截断), dynamic_schema_overrides)
+发现: AST 扫描 tools/ 下所有文件的顶层 register 调用
+     结果按 (文件mtime, 大小) 缓存 → 启动不重复解析
+可用性: check_fn 结果缓存 30s; 探测失败但 60s 内成功过 → 用上次结果
+     <span class="c">// 防抖: 一次网络抖动不会让工具瞬间从模型面前消失</span>
+执行: 顺序或并发二选一
+     并发: Daemon线程池, 分工具并行度上限, 永不并行黑名单
+     破坏性命令检测 · 批量总deadline · 错误文本截2048
+参数修复: 按 schema 强转类型/修复JSON字符串(模型的参数经常"差一点")
+内置工具(约90+): read/write/patch/search · terminal/process/终端布局 ·
+     browser 14件套 · computer_use · memory/skills三件套 ·
+     delegate_task/todo/cronjob/kanban 15件套 ·
+     execute_code/图像/视频/TTS · web三件套 · session_search ·
+     MCP接入 · 各消息平台专用工具</code></pre></div>
+
+<h2 id="e5">E5 · 状态与压缩：单会话 ID + 软归档</h2>
+<div class="codeview cvtoggle"><input type="radio" name="cve4" id="cve4-s" checked><input type="radio" name="cve4" id="cve4-p"><div class="cv-bar"><span class="cv-title">hermes_state.py:4385/11790 · SessionDB 与 archive_and_compact</span><label for="cve4-s">源码</label><label for="cve4-p">伪代码</label></div><pre class="cv src"><code><span class="cm">// class SessionDB(SessionSearchMixin, SessionSchemaMixin,</span>
+<span class="cm">//                SessionPortabilityMixin)  (L4385) —— SQLite state.db</span>
+<span class="cm">// 消息行: active · compacted · api_content(byte-stable副本) · tool_calls ·</span>
+<span class="cm">//          token_count · reasoning sidecar</span>
+<span class="cm">// archive_and_compact(L11790): 单事务内</span>
+<span class="cm">//   UPDATE messages SET active=0, compacted=1  (软归档, 不删!)</span>
+<span class="cm">//   INSERT 压缩摘要为新 active 行 —— session ID 终身不变(#38763)</span>
+<span class="cm">// 安全: watermark(压缩期间新到的行按内容克隆重排, 不被吞) ·</span>
+<span class="cm">//   compression_locks 租约 commit-fence(SessionCompressionInProgressError)</span>
+<span class="cm">// 血缘: 递归 CTE compression_lineage(L6160) 遍历;</span>
+<span class="cm">//   归档行仍在 FTS 索引里供 session_search 命中</span>
+<span class="cm">// fork: _branched_from/_delegate_from 血缘 marker(L8325-8360) →</span>
+<span class="cm">//   /branch /handoff /worktree 斜杠命令; durable ownership 防双活头(#95407)</span></code></pre>
+<pre class="cv pseudo"><code><span class="cm">// 伪代码 · Hermes 式压缩（与 CC/dsh 的对照）</span>
+压缩():
+    取租约锁(防并发压缩, commit-fence 语义)
+    水位 = 当前最大行id          <span class="c">// 慢速摘要期间新到的行安全</span>
+    在单事务内:
+        对 active=1 且 id ≤ 水位 的行: active=0, compacted=1   <span class="c">// 软归档</span>
+        插入 摘要行(active=1) 继承同一 session_id
+    <span class="c">// 与 CC(摘要替换消息)/dsh(replace遮蔽)不同:
+    //   Hermes 是"软归档"——旧行还在表里, 只是 active=0:
+    //   ① session_search 仍能搜到归档行(FTS 不管 active)
+    //   ② session ID 终身不变(引用稳定)
+    //   ③ 血缘用递归CTE可查"这段摘要来自哪些原文"</span>
+fork/branch: 行级血缘 marker(_branched_from/_delegate_from)
+    /branch /handoff /worktree 命令共享此机制; 双活头由 durable ownership 防护</code></pre></div>
+
+<h2 id="e6">E6 · 学习回路：守护线程里的「自我评审 fork」</h2>
+<div class="codeview cvtoggle"><input type="radio" name="cve5" id="cve5-s" checked><input type="radio" name="cve5" id="cve5-p"><div class="cv-bar"><span class="cv-title">agent/background_review.py:1773-1809, 321, 995 · review fork</span><label for="cve5-s">源码</label><label for="cve5-p">伪代码</label></div><pre class="cv src"><code><span class="cm">// "fork" 不是 os.fork —— 是 copy + daemon thread:</span>
+<span class="cm">// spawn_background_review 每 turn 后触发:</span>
+<span class="cm">//   threading.Thread(_run_review_in_thread L1773-1809) 里以 copy 出的</span>
+<span class="cm">//   快照构造 fork AIAgent —— 继承父的 provider/model/base_url/凭证/</span>
+<span class="cm">//   缓存 system prompt(命中同一 prefix cache)</span>
+<span class="cm">// 工具白名单只有 memory + skill_manage, 其余运行时拒绝</span>
+<span class="cm">// _session_db=None → 不写 harness 转录(usage 单独记账回父会话 L995)</span>
+<span class="cm">// 输入: _digest_history(tail=24) + 评估提示; 输入token聚合预算(#93057)</span>
+<span class="cm">// 新用户消息到达 → cancel_background_review_for_live_turn 有界打断</span>
+<span class="cm">//   (foreground 优先, #84423)</span>
+<span class="cm">// _resolve_review_runtime(L321): 可换便宜模型跑评审</span>
+<span class="cm">// 产出: 直接调 skill_manage 写 SKILL.md —— "对话沉淀技能"即此路径</span></code></pre>
+<pre class="cv pseudo"><code><span class="cm">// 伪代码 · Python 里的缓存友好 fork（无需多进程）</span>
+每turn结束后(异步):
+    fork = copy(父agent快照)              <span class="c">// 不是进程fork, 是对象copy</span>
+    fork.provider/model/凭证/system_prompt = 与父完全一致
+        <span class="c">// → fork 的第一次模型调用 = 父会话缓存的重放(几乎免费)</span>
+    fork.工具白名单 = {memory, skill_manage}   <span class="c">// 只许写记忆和技能</span>
+    fork.数据库 = None                     <span class="c">// 不写会话转录</span>
+    输入 = 最近24条消息的摘要 + "回顾对话, 值得存就写, 没有就说 Nothing to save"
+    输入token有总预算(防评审吃掉账单)
+    可配置换便宜模型跑(_resolve_review_runtime)
+    若用户来新消息: 有界打断评审(foreground 优先)
+    产出: 记忆条目 / 新的 SKILL.md(技能沉淀)
+<span class="cm">// 这就是 Hermes 的灵魂: 每轮对话都在后台被"复盘"成资产</span></code></pre></div>
+
+<h2 id="e7">E7 · Providers：Overlay 表 + 40 家统一三种传输</h2>
+<table>
+<tr><th>概念</th><th>实现</th></tr>
+<tr><td><b>HermesOverlay 表</b></td><td>hermes_cli/providers.py：每 provider 一个 overlay，声明 <code>transport</code>（<b>只有三种</b>：<code>openai_chat | anthropic_messages | codex_responses</code>）+ <code>base_url_override</code> 等——40+ 家 provider 全部归一到三种传输适配器（anthropic/bedrock/vertex/gemini_native/codex_responses/azure_identity…）</td></tr>
+<tr><td><b>provider 名单（40+）</b></td><td>nous · openrouter · openai-api · openai-codex · anthropic · xai(-oauth) · qwen-oauth · lmstudio · github-copilot · deepseek · alibaba(-coding-plan) · kimi-for-coding · stepfun · minimax(-oauth/-cn) · zai · vercel · opencode(-go/-free) · kilo · huggingface · novita · nvidia · xiaomi · tencent · fireworks · upstage · nebius · ollama-cloud · azure-foundry · bedrock · vertex · <b>moa（多模型聚合）</b>…</td></tr>
+<tr><td><b>认证</b></td><td>ProviderAuth：<code>auth_type</code>（oauth_device_code / oauth_external / api_key）+ <code>api_key_env_vars</code> 元组（如 zai→GLM_API_KEY/ZAI_API_KEY）；凭证池 credential_pool + 持久化；<b>~/.hermes/.env 每 turn 热刷新</b></td></tr>
+<tr><td><b>模型注册/费用</b></td><td>model_catalog / models / provider_projection；<b>model_cost_guard 费用守卫</b></td></tr>
+</table>
+<div class="beginner">「三种传输归一 40 家」是 LLM provider 层的教科书设计：新 provider 大多数只是 OpenAI 兼容 API 换个 base_url——与其写 40 个适配器，不如<b>一张 overlay 声明表 + 3 个传输适配器</b>。对照：dsh 用「适配器注册表+replace(providers) 原子换路由」，CC 用「callModel deps+fallbackModel」——同一问题的三种解法。</div>
+
+<h2 id="e8">E8 · 委派 / 配置 / UI</h2>
+<div class="grid2">
+<div class="card"><div class="card-title">delegate_task 子代理</div>子代理跑在父进程的 <b>ThreadPoolExecutor worker 线程</b>（非子进程）；配置 <code>delegation.max_concurrent_children / max_spawn_depth</code>（schema 描述随配置动态生成）；安全默认 <code>subagent_auto_approve=false</code> → 装入 <code>_subagent_auto_deny</code> 回调自动拒绝危险命令（true 则 once 放行，供 cron/batch）；上下文隔离用 <b>ContextVar 切换</b>（delegated_child_context）+ 子进程 env 清洗；血缘 marker <code>_delegate_from</code>。</div>
+<div class="card"><div class="card-title">config.yaml 顶层段（30+）</div><code>providers · database · runtime · session · agent(tool_use_enforcement/execution_guidance/environment_probe/bot_mode_protocol) · terminal · web · browser · checkpoints · mcp · tool_output · tool_loop_guardrails · compression · prompt_caching · auxiliary(side-task模型) · memory(write_approval/nudge_interval:10) · delegation · goals · loops · moa · skills · curator · 各消息平台 · approvals · plugins · hooks · personalities · security · cron · kanban · timeouts</code>；profile 位于 <code>&lt;root&gt;/profiles/&lt;name&gt;/</code>，各有独立 skills/plugins/cron/memories 与 state.db。</div>
+<div class="card"><div class="card-title">UI 与斜杠命令（约 100 个）</div>经典：prompt_toolkit 输入区 + rich 输出 + 状态栏 + 皮肤引擎（skin_engine.py）+ <b>宠物 pets.py</b> + KawaiiSpinner/工具 emoji；参数显示脱敏 redact_tool_args_for_display；流式 _fire_stream_delta。命令示例：/branch /handoff /worktree /compress /rollback /snapshot /queue /steer /goal /heartbeat /loop /plan /moa /subgoal /yolo /approvals /memory /skills /cron /kanban /curator /pet…——<b>斜杠命令也走 LLM 前置解释</b>（slash_exec EXECUTORS）。</div>
+<div class="card"><div class="card-title">互操作</div><code>hermes claw migrate [--dry-run|--yes|--preset full --migrate-secrets]</code> 从 OpenClaw 迁移（先快照备份，脚本在 optional-skills/migration/openclaw-migration）；skills 采用 <b>agentskills.io 标准</b>（YAML frontmatter，platform/environment 匹配，required env 自动捕获）；可经 mcp_serve.py 把自己暴露为 MCP 服务器、acp_adapter 接 ACP。</div>
+</div>
+
+<h2 id="e-mvp">E9 · Hermes 最小可复刻五支柱</h2>
+<div class="impl"><b>照抄清单</b>
+<ul>
+<li><b>① 三层 cache-friendly system prompt</b>：stable(人格/指引)→context(工作区/AGENTS.md)→volatile(技能索引/记忆快照/插件段/时间戳)，每会话构建一次仅压缩时失效——把「byte-stable」当成单元测试断言。</li>
+<li><b>② 受三重预算约束的循环</b>：max_iterations + iteration_budget + grace call；每类错误单独计数上限（length/截断tool-call/外层异常/压缩尝试≤3）。</li>
+<li><b>③ 自注册工具表</b>：顶层 registry.register(name/schema/handler/check_fn/emoji/截断/dynamic_schema)；AST 发现+缓存；check_fn 带 TTL+last-good 宽限；顺序/并发双执行路径+黑名单+批量 deadline。</li>
+<li><b>④ SQLite 单 ID 软归档</b>：active/compacted 标记 + 水位 + 租约锁；归档行保留在 FTS；血缘 marker 支撑 /branch /handoff。</li>
+<li><b>⑤ 守护线程 review fork</b>：copy 父快照（同 prompt=免费缓存重放）+ 白名单{memory, skill_manage}+ 不写转录 + 输入预算 + 有界打断——「每轮对话后台复盘成资产」的最小实现。</li>
+</ul></div>
+
+<div class="pagebreak" data-label="—— Part D ——"></div>
+
+<!-- ================================================================ -->
+<h2 id="d1">D1 · 终极对比：三种架构哲学</h2>
+<div class="grid3">
+<div class="card"><div class="card-title cc">Claude Code：单体循环</div><b>组织方式</b>：一个 async generator 循环装下一切，外围全是扩展点。<b>优化目标</b>：交互延迟与缓存命中（流式开跑工具、fork 共享父缓存、附件尾部追加）。<b>信任模型</b>：单用户本地工具，权限靠判定链+人工确认。<b>复杂度去处</b>：错误恢复（10 种终止原因、降级/放宽/恢复消息/紧急压缩）。</div>
+<div class="card"><div class="card-title oc">OpenClaw：常驻网关</div><b>组织方式</b>：Gateway 接管一切消息面，agent 是被调度的资源。<b>优化目标</b>：7×24 常驻、多渠道路由、多 agent 隔离。<b>信任模型</b>：消息来自外部世界——设备配对、challenge 签名、幂等键、五层权限。<b>复杂度去处</b>：会话键语法与 dmScope 隔离、writer-claim 防竞态、cron/heartbeat。</div>
+<div class="card"><div class="card-title ds">dsh：组合平台</div><b>组织方式</b>：微内核（插件容器+事件溯源），产品=一叠 YAML。<b>优化目标</b>：可组合、可重放、可自改（cordis preset 让 agent 改自己的组合）。<b>信任模型</b>：preset 即信任边界（minimal/standard/cordis 三档）。<b>复杂度去处</b>：双平面归属规则（host/agent）、投影一致性、KV-cache 纪律。</div>
+</div>
+<blockquote><p>一句话：<b>Claude Code 把循环做到极致，OpenClaw 把网关做到极致，dsh 把组合做到极致</b>。你要抄哪一家，取决于你的产品形态是「工具」「服务」还是「平台」。</p></blockquote>
+
+<h2 id="d2">D2 · 逐模块对照表（复刻时的查表索引）</h2>
+<table>
+<tr><th>模块</th><th class="cc">Claude Code</th><th class="oc">OpenClaw</th><th class="ds">dsh</th></tr>
+<tr><td><b>主循环形态</b></td><td>async generator（返回终止原因）</td><td>attempt 循环 + retry budget</td><td>turn/step + waterfall 扩展点</td></tr>
+<tr><td><b>上下文瘦身</b></td><td>7 种机制级联（预算化→snip→微压→collapse→自动→预测→紧急）</td><td>memory flush + 摘要</td><td>tool-result-pruner(确定性) + compaction(影子计价) + spill(落盘)</td></tr>
+<tr><td><b>工具定义</b></td><td>Tool 接口（schema/prompt/call/权限/双端渲染）</td><td>AnyAgentTool + 策略管线</td><td>ToolDefinition（output 规范值+render 投影）</td></tr>
+<tr><td><b>工具并发</b></td><td>连续 concurrency-safe 分批（≤10 并发）</td><td>agent-loop 顺序执行</td><td>exclusive 屏障 / parallel 滚动池，模型序提交</td></tr>
+<tr><td><b>权限</b></td><td>单点判定链 + 内容级安全独立于 bypass</td><td>五层（可见性/模式/钩子/危险集/审批）+ 沙箱</td><td>pre-execute waterfall + approval(fail-closed) + 三档 preset + Landlock/ACL</td></tr>
+<tr><td><b>子代理</b></td><td>CacheSafeParams fork（五件套复用）</td><td>subagents 工具 + spawn（delegationDepth 类似预算）</td><td>spawn/fork in-process + 接管 Claude Code/Codex 后端</td></tr>
+<tr><td><b>会话存储</b></td><td>JSONL parentUuid 链 + sidechain + 替换记录</td><td>SQLite nodes/windows 双表 + writer-claim</td><td>事件溯源 JSONL+zstd + surface 投影（75 事件类型）</td></tr>
+<tr><td><b>恢复/重放</b></td><td>resume 按记录重放替换（保缓存）</td><td>窗口链 + 会话状态信号 + watch 游标</td><td>重放日志重建一切（请求=日志纯函数）</td></tr>
+<tr><td><b>扩展机制</b></td><td>28 hooks + 插件市场 + MCP + skills</td><td>180 extensions + manifest/register(api)</td><td>cordis 插件 + waterfall + patch.yml</td></tr>
+<tr><td><b>记忆</b></td><td>memdir 文件 + Sonnet 召回 + fork 抽取 + dream</td><td>memory-core：SQLite 混合检索 + dreaming + 溯源</td><td>（外包）agent-instructions 只管指令，语义记忆归插件</td></tr>
+<tr><td><b>自动化</b></td><td>TaskType 7 种后台任务 + 崩溃退避重启</td><td>cron 5 型 + managed 对账 + heartbeat + /loop</td><td>jobs 包 + runMaintenance 空闲事务</td></tr>
+<tr><td><b>UI</b></td><td>React/Ink 终端（虚拟滚动/分组折叠）</td><td>WebChat RPC + Control UI + 原生 App</td><td>Web UI 消费投影快照（回放=直播）</td></tr>
+<tr><td><b>配置</b></td><td>5 层 settings + 托管策略最高</td><td>单文件 JSON5 严格校验 + 两桶规则 + 敏感键脱敏</td><td>补丁栈（bundle→profile→home→overlay）+ preset</td></tr>
+</table>
+
+<h2 id="d3">D3 · 关键机制横向对比（选型时的深水区）</h2>
+<h4>D3.1 「循环结束」怎么判定</h4>
+<table><tr><th>项目</th><th>机制</th><th>教训</th></tr>
+<tr><td class="cc">CC</td><td><code>needsFollowUp</code> 聚合判定（stop_reason 不可靠，注释明说）+ 10 种终止原因枚举作为返回值</td><td>循环的<b>返回值是 API</b>——SDK 靠它决定重试/上报</td></tr>
+<tr><td class="oc">OC</td><td>attempt 结果驱动 retry budget（rotate_profile/fallback_model），writer-claim 防被取代的 run 写库</td><td>常驻服务必须防<b>竞态写入</b>（新 run 取代旧 run 时旧 run 还在写）</td></tr>
+<tr><td class="ds">dsh</td><td>空批首步直接完成 turn 不耗模型调用；turnEnds=max-tokens 时 sticky</td><td>「什么都不做」也必须是<b>显式事件</b>，否则无法重放</td></tr></table>
+
+<h4>D3.2 上下文预算的三个流派</h4>
+<table><tr><th>流派</th><th>代表</th><th>顺序</th><th>特点</th></tr>
+<tr><td>级联减法</td><td class="cc">CC</td><td>工具结果落盘→snip→微压缩(3路径)→collapse→自动压缩→预测性→紧急</td><td>从最便宜到最贵依次尝试；每种都有精确阈值与缓存考量</td></tr>
+<tr><td>确定性优先</td><td class="ds">dsh</td><td>tool-result-pruner(8192/4096/1024 head-mid-tail) → compaction(LLM 摘要, 影子计价) → spill(全文落盘给定位符)</td><td>model-free 剪裁在前，LLM 摘要兜底；「溢出」单独成一个服务（故意最小）</td></tr>
+<tr><td>会话级笔记</td><td class="cc">CC SessionMemory</td><td>后台持续摘要 → 压缩时直接用笔记替代摘要调用</td><td>把压缩成本摊到平时；窗口约束保证不拆 API 不变量</td></tr></table>
+
+<h4>D3.3 权限模型的三个流派</h4>
+<table><tr><th>流派</th><th>代表</th><th>结构</th><th>适用</th></tr>
+<tr><td>判定链</td><td class="cc">CC</td><td>deny→ask→工具自检→内容安全(独立于bypass)→模式放行→allow→默认ask；Bash 前缀规则三型</td><td>单用户本地，人工确认兜底</td></tr>
+<tr><td>面过滤+多层</td><td class="oc">OC</td><td>可见性(profile/allow-deny/群)→模式(read-only~full)→钩子 block→危险工具集→exec审批；可选容器沙箱</td><td>多渠道多用户，没有单一信任边界</td></tr>
+<tr><td>档位+声明</td><td class="ds">dsh</td><td>preset 即信任面(minimal/standard/cordis)；pre-execute waterfall + fail-closed 审批；Landlock/ACL 后端</td><td>平台化分发，组合决定能力</td></tr></table>
+
+<h4>D3.4 会话持久化的三个流派</h4>
+<table><tr><th>流派</th><th>代表</th><th>结构</th><th>杀手特性</th></tr>
+<tr><td>消息链</td><td class="cc">CC</td><td>JSONL 每条带 uuid+parentUuid；sidechain 独立文件；替换记录</td><td>天然分叉（/rewind 从任意节点换父）+ 替换重放保缓存</td></tr>
+<tr><td>关系型双表</td><td class="oc">OC</td><td>session_nodes(身份) + session_windows(窗口链,9种reason)；writer-claim 事务</td><td>「重置会话≠删会话」；窗口链可审计可回溯</td></tr>
+<tr><td>事件溯源</td><td class="ds">dsh</td><td>75 种事件 append-only；三类 surface 事件+append/replace；一切派生态=纯投影</td><td>请求=日志的纯函数；UI 回放与直播同构；压缩不丢历史</td></tr></table>
+
+<h4>D3.5 扩展机制的三个流派</h4>
+<table><tr><th>流派</th><th>代表</th><th>结构</th><th>注册什么</th></tr>
+<tr><td>生命周期钩子</td><td class="cc">CC</td><td>28 事件 + shell hook + JSON 契约（可改写工具输入！）</td><td>外围自动化；官方钦定的 RAG 挂点</td></tr>
+<tr><td>能力注册表</td><td class="oc">OC</td><td>manifest(纯数据,静态可校验) + register(api) + 注册表消费</td><td>渠道/模型/记忆/工具/命令/钩子 全能力</td></tr>
+<tr><td>服务定义+waterfall</td><td class="ds">dsh</td><td>ctx.* 服务 + waterfall 链 + patch.yml 组合</td><td>任何能力都可作为服务替换默认实现</td></tr></table>
+
+<h2 id="d4">D4 · 事件/钩子体系对照</h2>
+<table>
+<tr><th>时机</th><th class="cc">Claude Code (28 hooks)</th><th class="oc">OpenClaw (插件钩子)</th><th class="ds">dsh (事件)</th></tr>
+<tr><td>会话开始</td><td>SessionStart（含 compact 来源重放）</td><td>session_start</td><td>turn/start（+ session 装载）</td></tr>
+<tr><td>提示提交前</td><td><b>UserPromptSubmit</b>（additionalContext 注入）</td><td>message_received</td><td>agent/pre-step（waterfall，可改写批）</td></tr>
+<tr><td>模型解析前</td><td>—</td><td><b>before_model_resolve</b></td><td><b>agent/request</b>（waterfall 提议 provider/model）</td></tr>
+<tr><td>提示组装前</td><td>InstructionsLoaded（CLAUDE.md 入上下文）</td><td><b>before_prompt_build</b>（注入/收窄工具面）</td><td>systemPrompt.assemble + runtimeContext.project</td></tr>
+<tr><td>工具调用前</td><td><b>PreToolUse</b>（decision/改输入）</td><td><b>before_tool_call</b>（block）</td><td><b>tools/pre-execute</b>（waterfall allow/deny/ask）</td></tr>
+<tr><td>工具执行中</td><td>onProgress</td><td>—</td><td>tools/execute（around：超时/重试/换 signal）</td></tr>
+<tr><td>工具调用后</td><td>PostToolUse / PostToolUseFailure</td><td>after_tool_call</td><td>tools/post-execute（改写结果）→ tools/result（emit 冻结）</td></tr>
+<tr><td>模型错误</td><td>FallbackTriggeredError 内部处理</td><td>attempt retry budget</td><td><b>agent/request-error</b>（waterfall 决定重试）</td></tr>
+<tr><td>回复后</td><td>Stop / StopFailure / Notification</td><td>before_agent_reply → agent_end</td><td>assistant/message 落盘 → turn/end</td></tr>
+<tr><td>压缩前后</td><td>PreCompact / PostCompact</td><td>memoryFlush（压缩前）</td><td>compaction/start|summary|end|prune（durable 事件=锁）</td></tr>
+<tr><td>子代理</td><td>SubagentStart / Stop</td><td>child_spawned（仅记录）</td><td>subagent 包事件</td></tr>
+<tr><td>文件/配置变更</td><td>FileChanged / ConfigChange / CwdChanged</td><td>gateway_start/stop</td><td>tools/change / DomainChanged</td></tr>
+</table>
+<div class="note"><b>对照启示</b>：三家的事件点高度趋同（提交前/组装前/调用前/调用后/结束），差别在<b>表达能力</b>——CC 的 hook 可改写工具输入；OC 的钩子分属 host 与插件两级；dsh 全部是 waterfall 链（框架只给默认链头，插件可以整链接管）。<b>设计自己的事件面时：少而深</b>（每个点都能让插件改变行为），而不是多而浅。</div>
+
+<h2 id="d5">D5 · Hermes 速览（完整蓝图见 E 篇）</h2>
+<table>
+<tr><th>维度</th><th>Hermes（NousResearch/hermes-agent）</th></tr>
+<tr><td>形态</td><td>Python 主体的自我改进 CLI agent（学习回路是一等公民）</td></tr>
+<tr><td>循环</td><td>tool_executor 分发 + turn_context 装配；记忆/技能双学习回路</td></tr>
+<tr><td>记忆</td><td>MEMORY.md/USER.md 有界自管理（2200/1375 字符，溢出报错附 current_entries）；冻结快照注入保 prefix cache；SQLite FTS5×3（自研 CJK bigram）全量检索</td></tr>
+<tr><td>后台</td><td>缓存对等 review fork（byte-identical prompt=廉价 cache read）；MemoryManager 单 provider 槽 + 8s prefetch 超时 + 单 worker 写回</td></tr>
+<tr><td>扩展</td><td>MemoryProvider 协议（8 内置 provider）+ agentskills.io 兼容技能 + <code>hermes claw migrate</code> 互操作</td></tr>
+<tr><td>对照定位</td><td>≈ Claude Code 的循环 + OpenClaw 的记忆深度，但以「学习」为中心——适合抄<b>有界记忆/缓存不变量/自纠正错误</b>三件套</td></tr>
+</table>
+
+<h2 id="d6">D6 · 照抄路线图：M0 → M5（以复刻为目标）</h2>
+<div class="flow">
+<span class="step"><b>M0 最小闭环</b><br><small>循环+2工具+JSONL</small></span><span class="arrow">→</span>
+<span class="step"><b>M1 上下文工程</b><br><small>注入槽位+自动压缩</small></span><span class="arrow">→</span>
+<span class="step"><b>M2 权限与安全</b><br><small>判定链+沙箱</small></span><span class="arrow">→</span>
+<span class="step"><b>M3 持久化升级</b><br><small>分叉/重放/投影</small></span><span class="arrow">→</span>
+<span class="step"><b>M4 扩展面</b><br><small>hooks/插件/子代理</small></span><span class="arrow">→</span>
+<span class="step"><b>M5 服务化</b><br><small>网关/多渠道路由</small></span>
+</div>
+<table>
+<tr><th>里程碑</th><th>交付物</th><th>照抄对象</th><th>验收标准</th></tr>
+<tr><td><b>M0</b></td><td>async generator 循环（返回终止原因）+ Read/Bash 两工具 + JSONL transcript</td><td>CC A2/A4/A9</td><td>能跑通「读文件→改文件→汇报」；Ctrl-C 干净中止；transcript 可重放</td></tr>
+<tr><td><b>M1</b></td><td>注入槽位（首条高权重指令消息/尾部附件）+ 工具列表稳定排序 + autocompact（九段摘要提示词照抄）+ 微压缩（旧工具结果→占位符）</td><td>CC A3 + 2.13/2.14；dsh pruner</td><td>同会话连续请求前缀字节一致（缓存断言测试）；长会话不爆窗</td></tr>
+<tr><td><b>M2</b></td><td>权限判定链（默认 ask）+ 内容级安全（独立于 bypass）+ Bash 前缀规则三型 + 只读/破坏性/可并行分类</td><td>CC A5/A4；dsh 三档 preset</td><td>红队用例：rm -rf / .git 写入被拦；并发批只含可并行工具</td></tr>
+<tr><td><b>M3</b></td><td>三选一深入：①parentUuid 分叉+替换记录（CC）②nodes/windows 双表（OC）③事件溯源+投影（dsh）</td><td>A9 / B6 / C5</td><td>resume 后上下文字节与当时一致；/rewind 或 fork 可用；回放=直播</td></tr>
+<tr><td><b>M4</b></td><td>事件面（少而深：提交前/组装前/调用前/调用后/结束）+ 子代理 fork（缓存五件套）+ skills（frontmatter 常驻/正文按需）</td><td>CC A6/A7/A8；dsh C8 模式</td><td>一个第三方插件能不改内核加工具+注入上下文；fork 不打爆父缓存</td></tr>
+<tr><td><b>M5</b></td><td>常驻网关（单端口 WS+HTTP、challenge 签名、幂等键）+ 渠道抽象（归一化入站+单一 message 工具）+ 会话键路由 + cron/托管任务对账</td><td>OC B2/B3/B4/B9</td><td>两个渠道两个 peer 会话互不可见；网络重试不重复执行；托管任务 drift 自愈</td></tr>
+</table>
+<div class="impl"><b>全程贯穿的三条军规（三家共同）</b>
+<ul>
+<li><b>缓存纪律</b>：不变的放最前、动态的走尾部 append、改写必留记录、工具列表稳定排序——每加一个功能先问「这会不会破坏前缀」。</li>
+<li><b>fail-closed 默认</b>：权限默认 ask、审批无人应答即拒绝、读失败拒绝覆写、未知事件类型拒绝读取（除非标记 ignorable）。</li>
+<li><b>后台任务三要素</b>：沙箱（工具白名单）+ 硬上限（maxTurns/超时）+ 可观测（遥测/usage/缓存命中率）——CC fork、OC isolated-agent、dsh maintenance 全是这个模子。</li>
+</ul></div>
+
+<h2 id="d7">D7 · 选型决策树</h2>
+<div class="ascii">你要做什么？
+│
+├─ 个人/团队的本地编程助手（CLI/IDE）
+│   └─► 抄 Claude Code：M0→M1→M2 为主, M4 按需
+│        循环+缓存纪律+权限链; 记忆抄 memdir(文件+小模型召回+fork抽取)
+│
+├─ 7×24 常驻的个人助理（微信/Telegram/Slack…多渠道）
+│   └─► 抄 OpenClaw：先 M5 的网关与会话键, 再 M1/M2
+│        dmScope 隔离是生死线; 记忆抄 memory-core(混合检索+dreaming)
+│
+├─ 给别人做平台的 Agent 框架/多租境
+│   └─► 抄 dsh：M0 用它的循环, M3 选事件溯源, M4 全部 waterfall 化
+│        preset=信任边界; 记忆做成插件(照 C8 模式)
+│
+├─ 极端重视学习/自我改进的 agent
+│   └─► 抄 Hermes：有界记忆+缓存不变量+自纠正错误 三件套
+│
+└─ 只要一个能用的, 不想造轮子
+    └─► Claude Code / opencode 直接用 + AGENTS.md 标准化你的指令</div>
+
+<h2 id="d8">D8 · 四家学习回路对比：Agent 如何「越用越好」</h2>
+<p>学习回路是 2026 年 Agent 框架的分水岭——四家用四种完全不同的机制实现「从使用中沉淀资产」：</p>
+<table>
+<tr><th>维度</th><th class="cc">Claude Code</th><th class="oc">OpenClaw</th><th class="ds">dsh</th><th style="color:var(--purple)">Hermes</th></tr>
+<tr><td><b>沉淀什么</b></td><td>记忆（四类单事实文件）</td><td>记忆（分层+溯源）+ 常驻意图</td><td>（框架不管，插件自定）</td><td><b>记忆 + 技能（SKILL.md）双资产</b></td></tr>
+<tr><td><b>谁来做</b></td><td>轮后 extract fork（maxTurns 5）</td><td>会话摄入 + 凌晨 dreaming 子代理</td><td>—</td><td>轮后 review fork（copy+daemon 线程）</td></tr>
+<tr><td><b>怎么隔离</b></td><td>完整 fork + 工具沙箱（只写记忆目录）</td><td>隔离子代理 + 校验失败 append 回退</td><td>—</td><td>对象 copy + 白名单{memory, skill_manage} + 不写转录</td></tr>
+<tr><td><b>缓存友好</b></td><td>fork 复用主线程缓存（遥测 cacheHitRate）</td><td>隔离会话，不碰主缓存</td><td>—</td><td><b>最强</b>：继承父 prompt → 首请求=父缓存重放（几乎免费）</td></tr>
+<tr><td><b>价值门槛</b></td><td>What-NOT-to-save 清单进提示词</td><td><b>量化晋升闸门</b>（0.75 分 + 3 召回 × 3 查询）</td><td>—</td><td>nudge（每 10 轮）+ review 提示「没有就说 Nothing to save」</td></tr>
+<tr><td><b>巩固/整理</b></td><td>auto-dream（≥24h+5 会话，四阶段，≤20 轮）</td><td>Light/REM/Deep 三相 + 索引重建</td><td>—</td><td>curator 配置段 + /curator 命令整理技能库</td></tr>
+<tr><td><b>人工把关</b></td><td>无（自动）</td><td>untrusted 溯源禁自动注入</td><td>—</td><td><b>write_approval 审批门</b>（/memory approvals + diff）</td></tr>
+<tr><td><b>技能沉淀</b></td><td>skillify 内置技能（对话→skill 草稿）</td><td>Skill Workshop / self-learning</td><td>cordis preset 自改组合</td><td><b>review fork 直接写 SKILL.md</b>（read-before-write 守卫）</td></tr>
+</table>
+<blockquote><p>启示：学习回路的四个必答题——<b>沉淀什么（资产类型）、谁来沉淀（隔离方式）、何时沉淀（触发与门槛）、谁负责把关（人工/溯源/审批）</b>。四家恰好各自把一个答案做到了极致：CC 的门槛（不存可推导内容）、OC 的量化晋升、Hermes 的缓存成本归零、dsh 的「不做也是答案」。</p></blockquote>
+
+<h2 id="appendix">附录 · 快速查表</h2>
+<h4>A. 术语对照</h4>
+<table>
+<tr><th>概念</th><th class="cc">CC</th><th class="oc">OC</th><th class="ds">dsh</th></tr>
+<tr><td>一轮模型交互</td><td>query iteration / turn</td><td>attempt</td><td>step（turn 含多 step）</td></tr>
+<tr><td>会话</td><td>session（JSONL 文件）</td><td>session_node + windows</td><td>Session（事件日志）</td></tr>
+<tr><td>模型可见历史</td><td>messages（经压缩投影）</td><td>transcript（writer-claim）</td><td>surface（append/replace）</td></tr>
+<tr><td>上下文注入</td><td>attachment</td><td>prependContext / 注入</td><td>context 包（source.kind 消息）</td></tr>
+<tr><td>后台旁路代理</td><td>fork / sidechain</td><td>isolated agent / subagent</td><td>subagent spawn/fork</td></tr>
+<tr><td>扩展单元</td><td>hook / plugin / skill</td><td>extension（manifest+register）</td><td>cordis 插件（apply）</td></tr>
+<tr><td>权限回调</td><td>canUseTool</td><td>（多层无单点）</td><td>tools/pre-execute + approval</td></tr>
+<tr><td>压缩</td><td>compact / microcompact</td><td>compaction + flush</td><td>compaction（ctx.compaction）</td></tr>
+</table>
+<h4>B. 本地仓库源码索引（关键入口文件）</h4>
+<div class="card filetree"><span class="dir">claude-code-src/</span>src/query.ts(2057行 主循环) · src/QueryEngine.ts · src/Tool.ts · src/tools.ts · toolOrchestration.ts
+src/utils/{api,context,claudemd,attachments,sessionStorage,forkedAgent,hooks}.ts
+src/services/{compact,extractMemories,autoDream,SessionMemory,mcp}/ · src/screens/REPL.tsx · src/main.tsx
+
+<span class="dir">openclaw/</span>src/gateway/{server-kernel,server-methods,server-channels}.ts · src/routing/{resolve-route,session-key,bindings}.ts
+src/agents/{agent-command,agent-tools*,embedded-agent-runner/} · src/agents/sessions/{system-prompt,session-manager}.ts
+src/state/openclaw-agent-schema.sql · src/config/{defaults,sensitive-paths,sessions/reset-policy}.ts
+src/cron/ · src/channels/ · packages/agent-core/ · extensions/{memory-core,active-memory,telegram,…}
+
+<span class="dir">deepseek-harness/</span>vendor/cordis/ · apps/cli/src/profile-boot.ts
+packages/core/{agent,agent-loop,session,tools,system-prompt}/ · packages/llm/{llm,token-meter}/
+packages/session/{session-persistence-jsonl,session-projection,session-checkpoint-policy}/
+packages/context/agent-instructions/ · packages/{compaction,spill,storage,credentials,skill}/*
+packages/preset/agent-presets/presets/{standard,minimal,cordis,ptc}/ · packages/bundle/base/cordis.patch.yml</div>
+
+<footer>
+基于五个本地克隆仓库（D:\memory 下）的框架级源码精读，全部引用标注 文件:行号。上游：
+<a class="src" href="https://github.com/claude-code-best/claude-code">claude-code-best/claude-code</a> ·
+<a class="src" href="https://github.com/openclaw/openclaw">openclaw/openclaw</a> ·
+<a class="src" href="https://github.com/deepseek-ai/deepseek-harness">deepseek-ai/deepseek-harness</a> ·
+参照：<a class="src" href="https://github.com/nousresearch/hermes-agent">NousResearch/hermes-agent</a>
+</footer>
+
+</main>
+</div>
+</body>
+</html>

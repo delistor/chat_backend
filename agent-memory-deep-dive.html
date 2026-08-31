@@ -1,0 +1,1644 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent 记忆系统源码级教程 · Claude Code / OpenClaw / Hermes / dsh（初学者版·扩容版）</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--panel2:#1c2333;--border:#30363d;--text:#e6edf3;--muted:#8b949e;--accent:#58a6ff;--green:#3fb950;--purple:#bc8cff;--orange:#f0883e;--pink:#ff7b72;--yellow:#e3b341;--cyan:#39c5cf;--code-bg:#0a0e14}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.8}
+  .layout{display:flex;max-width:1580px;margin:0 auto}
+  nav{width:300px;position:sticky;top:0;height:100vh;overflow-y:auto;padding:24px 14px;border-right:1px solid var(--border);flex-shrink:0;font-size:12.5px;scrollbar-width:thin}
+  nav h3{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin:16px 0 6px}
+  nav a{display:block;color:var(--muted);text-decoration:none;padding:4px 10px;border-radius:6px}
+  nav a:hover{color:var(--text);background:var(--panel)}
+  main{flex:1;padding:44px 52px;min-width:0;max-width:1240px}
+  h1{font-size:32px;margin-bottom:8px}h1 span{color:var(--accent)}
+  .subtitle{color:var(--muted);margin-bottom:8px;font-size:14px}
+  .badge{display:inline-block;background:rgba(63,185,80,.12);color:var(--green);border:1px solid rgba(63,185,80,.4);font-size:12px;padding:2px 10px;border-radius:999px;margin:4px 4px 12px 0}
+  h2{font-size:25px;margin:64px 0 18px;padding-bottom:10px;border-bottom:1px solid var(--border);scroll-margin-top:16px}
+  h2 .tag{font-size:12px;font-weight:500;padding:3px 10px;border-radius:999px;vertical-align:middle;margin-left:10px}
+  h3{font-size:18px;margin:32px 0 10px;color:var(--accent)}
+  h4{font-size:14.5px;margin:22px 0 8px;color:var(--purple)}
+  p{margin:10px 0;color:#c9d1d9}
+  ul,ol{margin:10px 0 10px 24px;color:#c9d1d9}li{margin:5px 0}
+  code{font-family:"Cascadia Code",Consolas,monospace;background:var(--panel2);padding:2px 6px;border-radius:4px;font-size:13px;color:var(--pink)}
+  pre{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:16px 18px;overflow-x:auto;margin:14px 0;font-size:12.5px;line-height:1.6}
+  pre code{background:none;padding:0;color:#c9d1d9;white-space:pre}
+  .cm{color:#6a9955}.kw{color:#569cd6}.st{color:#ce9178}.fn{color:#dcdcaa}.nu{color:#b5cea8}
+  .src-line{color:var(--yellow);font-size:11px;display:block;margin-bottom:6px;opacity:.9}
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px}
+  th,td{border:1px solid var(--border);padding:9px 12px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);font-weight:600}td{color:#c9d1d9}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin:14px 0}
+  .card .card-title{font-weight:600;color:var(--accent);margin-bottom:8px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  @media(max-width:1150px){.grid2,.grid4{grid-template-columns:1fr}nav{display:none}}
+  .kpi{text-align:center;padding:16px 8px}
+  .kpi .num{font-size:18px;font-weight:700}.kpi .lbl{font-size:12px;color:var(--muted);margin-top:4px}
+  .cc{color:var(--orange)}.oc{color:var(--green)}.hm{color:var(--purple)}.ds{color:var(--accent)}
+  .flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px;margin:14px 0;font-size:12.5px}
+  .flow .step{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:8px 12px}
+  .flow .arrow{color:var(--muted);align-self:center}
+  .note{border-left:3px solid var(--yellow);background:rgba(227,179,65,.07);padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0;font-size:14px}
+  .note b{color:var(--yellow)}
+  .good{border-left-color:var(--green);background:rgba(63,185,80,.07)}.good b{color:var(--green)}
+  .fix{border-left-color:var(--pink);background:rgba(255,123,114,.07)}.fix b{color:var(--pink)}
+  .beginner{border-left:3px solid var(--cyan);background:rgba(57,197,207,.07);padding:12px 18px;border-radius:0 8px 8px 0;margin:16px 0;font-size:14.5px}
+  .beginner::before{content:"🌱 初学者角 · ";color:var(--cyan);font-weight:700}
+  .beginner b{color:var(--cyan)}
+  a.src{color:var(--accent);text-decoration:none;font-size:12.5px}a.src:hover{text-decoration:underline}
+  .filetree{font-family:Consolas,monospace;font-size:12.5px;white-space:pre;overflow-x:auto}
+  .filetree .dir{color:var(--accent);font-weight:600}.filetree .c{color:var(--muted)}
+  blockquote{border-left:3px solid var(--purple);background:rgba(188,140,255,.06);padding:10px 16px;margin:12px 0;color:#d8ccb8;font-size:13.5px;border-radius:0 8px 8px 0}
+  blockquote p{margin:4px 0}
+  .pagebreak{margin:70px 0 0;border-top:1px dashed var(--border);position:relative}
+  .pagebreak::before{content:attr(data-label);position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--bg);padding:0 16px;color:var(--muted);font-size:12px}
+  footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--border);color:var(--muted);font-size:12px}
+  .term{color:var(--cyan);font-weight:600}
+  /* —— 源码/伪代码切换组件 —— */
+  .codeview{margin:16px 0}
+  .cv-bar{display:flex;align-items:center;gap:0;border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;background:var(--panel);overflow:hidden}
+  .cv-bar .cv-title{padding:6px 12px;font-size:12px;color:var(--muted);font-family:Consolas,monospace;flex:1;border-right:1px solid var(--border)}
+  .cv-bar button{background:none;border:none;color:var(--muted);font-size:12px;padding:6px 14px;cursor:pointer;font-family:inherit;border-left:1px solid var(--border)}
+  .cv-bar button.on{background:var(--panel2);color:var(--text);font-weight:600}
+  .cv-bar button:hover{color:var(--text)}
+  .codeview pre{margin:0;border-radius:0 0 8px 8px}
+  .codeview pre[hidden]{display:none}
+  .cv-pseudo pre code{color:#a5d6ff}
+  .ascii{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;overflow-x:auto;font-family:Consolas,monospace;font-size:12px;line-height:1.5;color:#9ecbff;white-space:pre}
+
+/* —— 平铺双视图覆盖（无脚本，代码始终可见）—— */
+.codeview{border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.codeview pre{margin:0;border:none;border-radius:0}
+.cv-bar{border-radius:0;border-left:none;border-right:none;border-top:none;border-bottom:1px solid var(--border)}
+.cv-bar button{display:none}
+.cv-pseudo-bar{border-top:1px solid var(--border);background:var(--panel2)}
+.cv-pseudo-bar .cv-title{color:var(--purple)}
+.codeview-inner{border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;background:var(--code-bg)}
+.codeview-inner pre{border:none;margin:0;border-radius:0 0 8px 8px}
+
+/* —— 纯 CSS 源码⇄伪代码切换（radio + label，无 JS）—— */
+.codeview input[type=radio]{display:none}
+.cv-bar label{cursor:pointer;font-size:12px;padding:6px 14px;color:var(--muted);border-left:1px solid var(--border);user-select:none}
+.cv-bar label:hover{color:var(--text);background:var(--panel2)}
+.codeview input:nth-of-type(1):checked ~ .cv-bar label:nth-of-type(1),
+.codeview input:nth-of-type(2):checked ~ .cv-bar label:nth-of-type(2){background:var(--panel2);color:var(--text);font-weight:600}
+.codeview pre.cv{display:none}
+.codeview input:nth-of-type(1):checked ~ pre.src{display:block}
+.codeview input:nth-of-type(2):checked ~ pre.pseudo{display:block}
+
+/* —— 纯 CSS 源码⇄伪代码切换（radio + label，无 JS）—— */
+.cvtoggle input[type=radio]{display:none}
+.cvtoggle .cv-bar label{cursor:pointer;font-size:12px;padding:6px 14px;color:var(--muted);border-left:1px solid var(--border);user-select:none}
+.cvtoggle .cv-bar label:hover{color:var(--text);background:var(--panel2)}
+.cvtoggle input:nth-of-type(1):checked ~ .cv-bar label:nth-of-type(1),
+.cvtoggle input:nth-of-type(2):checked ~ .cv-bar label:nth-of-type(2){background:var(--panel2);color:var(--text);font-weight:600}
+.cvtoggle pre.cv{display:none}
+.cvtoggle input:nth-of-type(1):checked ~ pre.src{display:block}
+.cvtoggle input:nth-of-type(2):checked ~ pre.pseudo{display:block}
+</style>
+</head>
+<body>
+<div class="layout">
+<nav>
+  <h3>第〇部分 · 预备知识</h3>
+  <a href="#p0">为什么需要这份教程</a>
+  <a href="#basics-token">0.1 Token / 上下文窗口</a>
+  <a href="#basics-msg-arr">0.2 一个真实请求的消息结构</a>
+  <a href="#basics-kv">0.3 KV Cache（最重要背景）</a>
+  <a href="#basics-msg">0.4 消息角色与注入位置</a>
+  <a href="#basics-lifecycle">0.5 一轮生命周期与事件挂点</a>
+  <a href="#basics-memtiers">0.6 三层记忆类比</a>
+  <a href="#basics-budget">0.7 预算思维总表</a>
+  <h3>第一部分 · 全景</h3>
+  <a href="#paradigms">四大项目与四种范式</a>
+  <a href="#matrix">总对比矩阵</a>
+  <a href="#howto">如何使用本教程</a>
+  <h3>第二部分 · Claude Code</h3>
+  <a href="#cc-map">2.1 源码地图</a>
+  <a href="#cc-claudemd">2.2 CLAUDE.md 加载管线</a>
+  <a href="#cc-import">2.3 @import 展开</a>
+  <a href="#cc-memdir">2.4 memdir 记忆目录</a>
+  <a href="#cc-types">2.5 四类记忆与取舍</a>
+  <a href="#cc-extract">2.6 后台抽取 fork</a>
+  <a href="#cc-recall">2.7 召回：Sonnet 选择器</a>
+  <a href="#cc-index">2.8 MEMORY.md 双限额</a>
+  <a href="#cc-age">2.9 记忆年龄</a>
+  <a href="#cc-team">2.10 团队记忆同步</a>
+  <a href="#cc-dream">2.11 Auto-Dream</a>
+  <a href="#cc-sessionmemory">2.12 Session Memory</a>
+  <a href="#cc-compact-autoc">2.13 Autocompact 与提示词</a>
+  <a href="#cc-compact-micro">2.14 Microcompact 三路径</a>
+  <a href="#cc-compact-snip">2.15 Snip / SM-Compact</a>
+  <a href="#cc-postcompact">2.16 压缩后重注入</a>
+  <a href="#cc-attach">2.17 Attachments 全景</a>
+  <a href="#cc-config">2.18 配置速查</a>
+  <h3>第三部分 · OpenClaw</h3>
+  <a href="#oc-arch">3.1 工作区与预算</a><a href="#oc-trigger">3.2 Trigger 注入</a><a href="#oc-search">3.3 检索打分公式</a><a href="#oc-prov">3.4 溯源四分类</a><a href="#oc-dream">3.5 Dreaming 三相</a><a href="#oc-promote">3.6 晋升闸门</a><a href="#oc-schema">3.7 SQLite Schema</a><a href="#oc-cli">3.8 工具与 CLI</a><a href="#oc-intent">3.9 Standing Intents 与召回通道</a><a href="#oc-config">3.10 配置参考</a>
+  <h3>第四部分 · Hermes</h3>
+  <a href="#hm-store">4.1 有界存储</a><a href="#hm-snapshot">4.2 冻结快照</a><a href="#hm-tool">4.3 memory 工具</a><a href="#hm-fts">4.4 FTS5+CJK</a><a href="#hm-mgr">4.5 MemoryManager</a><a href="#hm-provider">4.6 八大 Provider</a><a href="#hm-loop">4.7 学习回路</a><a href="#hm-schema">4.8 state.db Schema</a><a href="#hm-compact">4.9 压缩与检查点</a>
+  <h3>第五部分 · dsh</h3>
+  <a href="#dsh-discover">5.1 指令发现</a><a href="#dsh-render">5.2 渲染与去重</a><a href="#dsh-refresh">5.3 append-only 刷新</a><a href="#dsh-jsonl">5.4 JSONL 日志</a><a href="#dsh-compact">5.5 Compaction 家族</a><a href="#dsh-plugin">5.6 插件接入点</a><a href="#dsh-preset">5.7 预设与配置分层</a>
+  <h3>第六部分 · 参照系</h3>
+  <a href="#others">Codex / Cursor / Gemini / Letta / mem0</a>
+  <h3>第七部分 · 动手实践</h3>
+  <a href="#diy">从零写记忆系统 Lv1-7</a>
+  <a href="#pitfalls">十五个常见坑</a>
+  <a href="#eval">记忆系统的测试与评估</a>
+  <a href="#migrate">迁移与互操作</a>
+  <a href="#lessons">源码级新认知</a>
+  <a href="#design">选型建议</a>
+  <h3>附录</h3>
+  <a href="#glossary">A 术语表</a><a href="#errata">B 勘误表</a><a href="#configtable">C 配置速查总表</a><a href="#fileindex">D 源码文件索引</a>
+</nav>
+
+<main>
+<h1>Agent <span>记忆系统</span>源码级教程</h1>
+<p class="subtitle">Claude Code（去混淆源码精读）· OpenClaw · Hermes（NousResearch）· dsh（DeepSeek Harness）—— 从零基础到读懂源码 · 扩容版</p>
+<span class="badge">✓ Claude Code 基于 claude-code-best/claude-code 去混淆 TypeScript 源码</span>
+<span class="badge">✓ 关键代码均提供 源码 ⇄ 伪代码 双视图（点击代码块右上角切换）</span>
+<span class="badge">✓ 全部引用标注 文件路径:行号</span>
+
+<!-- ================================================================ -->
+<h2 id="p0">第〇部分 · 预备知识：读懂源码前你必须懂的七件事</h2>
+<p>这一部分不涉及任何具体项目，只讲贯穿全文的基础概念。<b>后面四个项目的每一个设计决策，几乎都是在回应这一部分提出的约束</b>。已熟悉 LLM 应用的读者可快速扫过；初学者请按顺序读完。</p>
+
+<h3 id="basics-token">0.1 Token 与上下文窗口：Agent 的「工作记忆」上限</h3>
+<div class="beginner">
+<b>Token</b> 是大模型处理文本的最小单位，约等于 0.75 个英文单词或 0.5~1.5 个汉字。<b>上下文窗口（context window）</b>是模型一次能「看见」的全部内容长度上限，目前主流 200K～1M token。Agent 与聊天机器人不同——它一轮要执行几十次工具调用，每次调用的输入输出<b>全部累积</b>在上下文里，几十轮就能把窗口塞满。窗口满了要么报错，要么最老内容被「挤出去」——模型就<b>失忆</b>了。记忆系统的第一个使命，就是在这个物理上限内让 Agent「记得住」。
+</div>
+<div class="codeview cvtoggle"><input type="radio" name="cv20" id="cv20-s" checked><input type="radio" name="cv20" id="cv20-p"><div class="cv-bar"><span class="cv-title">示意 · 一轮 Agent 循环中上下文如何增长</span><label for="cv20-s">源码</label><label for="cv20-p">伪代码</label></div><pre class="cv src"><code><span class="cm">// 一轮 Agent 循环中上下文是如何增长的（示意）：</span>
+[system prompt] + [CLAUDE.md 指令] + [工具定义]        <span class="cm">// 固定开销 ~10-20K token</span>
++ 用户消息                                              <span class="cm">// +几十</span>
++ 模型决定调用 Read("src/big.ts") → 工具结果 3000 token  <span class="cm">// +3000</span>
++ 模型继续读 19 个文件...                                <span class="cm">// +60000</span>
++ 模型的思考与回复                                       <span class="cm">// 持续累积</span>
+<span class="cm">// → 几十轮后接近上限，触发"压缩(compaction)"</span></code></pre>
+</div>
+
+<h3 id="basics-msg-arr">0.2 一个真实请求的消息结构（把「注入」看 concrete）</h3>
+<p>「注入到上下文」到底长什么样？下面是 Claude Code 风格一次请求的 messages 数组完整示意（简化）。<b>请记住这张图——第二部分讲源码时每个机制都会指向图中的某个槽位。</b></p>
+<div class="ascii">messages = [
+  {role:"user", isMeta:true,  content:"&lt;project-instructions&gt;        ← ② CLAUDE.md 全文（缓存前缀最深处）
+     本项目使用 pnpm；测试跑 vitest ...&lt;/project-instructions&gt;"},
+  {role:"user", isMeta:true,  content:"&lt;system-reminder&gt;              ← ③ 低权重上下文(git状态/日期)
+     As you answer ... git branch: main ...&lt;/system-reminder&gt;"},
+  {role:"user",               content:"帮我修登录超时的 bug"},           ← ④ 真正的用户输入
+  {role:"assistant", tool_calls:[Read("src/auth.ts")]},                 ← ⑤ 模型发起工具调用
+  {role:"user", tool_result:"(文件内容 3000 token)"},                   ← ⑥ 工具结果(可被microcompact清)
+  ... 更多 工具调用/结果 ...
+  {role:"user", isMeta:true,  content:"&lt;system-reminder&gt;              ← ⑦ 尾部附加(缓存友好)
+     Memory (saved 3 days ago): ~/.claude/.../timeout_debug.md:
+     用户上次说: 连接池耗尽会表现为随机超时...&lt;/system-reminder&gt;"},
+  {role:"user",               content:"（用户下一句输入）"}
+]
+system prompt = 静态身份+工具说明（不随会话变 → 缓存永远命中）</div>
+<div class="beginner">
+四个「注入槽位」：②<b>首条指令消息</b>（高权重、深缓存）→ ③<b>低权重提醒</b> → ⑦<b>尾部附加</b>（每轮可追加、不动前缀）→ system prompt（几乎不变）。所有项目的记忆注入，本质都是在选槽位：选错槽位 = 要么权重不够、要么缓存全灭。
+</div>
+
+<h3 id="basics-kv">0.3 KV Cache：为什么所有项目都在「保护前缀缓存」</h3>
+<div class="beginner">
+LLM 生成每个 token 都要对之前<b>所有</b> token 做注意力计算。为避免重算，推理服务商缓存已计算结果（KV cache）。核心规则：<b>请求开头与上次完全一致（前缀不变）→ 缓存命中，费用最高降 90%、延迟大幅下降；开头哪怕改一个字，从该点起全部作废</b>。缓存通常还有 TTL（Claude 服务端 1 小时）——闲置太久也会失效。
+</div>
+<div class="codeview"><div class="cv-bar"><span class="cv-title">示意 · 缓存命中与失效</span></div>
+<pre class="cv src"><code>请求1: [A][B][C][D]           <span class="cm">// 计算 ABCD，缓存 ABCD（TTL 1小时）</span>
+请求2: [A][B][C][D][E]        <span class="cm">// 前缀 ABCD 命中 → 只算 E（快、便宜 ~10% 价格）</span>
+请求2': [A][X][C][D][E]       <span class="cm">// 第2位变了 → 从 X 起全部重算（慢、贵）</span>
+请求3 (2小时后): [A][B][C][D][F]  <span class="cm">// TTL 过期 → ABCD 也要重算</span></code></pre>
+</div>
+<table>
+<tr><th>项目</th><th>为保护缓存做了什么</th></tr>
+<tr><td class="cc">Claude Code</td><td>记忆 header 用创建时快照；CLAUDE.md 固定在 messages[0]；time-based MC 选 60min 阈值正好等 TTL 过期再清（"never force a miss"）；日期变更只在尾部追加 date_change 不清缓存</td></tr>
+<tr><td class="oc">OpenClaw</td><td>MEMORY.md 按预算注入但磁盘文件不改写；trigger 注入是隐藏上下文按轮附加</td></tr>
+<tr><td class="hm">Hermes</td><td><b>冻结快照</b>：会话中写记忆只落盘不改 system prompt；后台 review fork 用 byte-identical prompt 让 fork 首请求=cache read</td></tr>
+<tr><td class="ds">dsh</td><td>指令刷新只 append 不回改；digest 未变不重复注入；被替换的旧指令内容仍留在历史（新消息声明"以下内容为准"）</td></tr>
+</table>
+
+<h3 id="basics-msg">0.4 消息角色与「注入到哪里」</h3>
+<div class="beginner">
+一次对话是一列消息：<b>system</b>（全局设定，通常静态）· <b>user</b>（用户输入）· <b>assistant</b>（模型输出）· <b>tool result</b>（工具结果，以 user 侧回传）。<b>「注入到哪里」与「注入什么」同样重要</b>：放 system prompt = 固定前缀（利于缓存、难更新）；作为 user 消息 = 灵活（可追加在尾部、可带 meta 标记）。Claude Code 把 CLAUDE.md 放<b>首条 meta user 消息</b>（<code>&lt;project-instructions&gt;</code> 包裹，注释明言这样「instructional weight」更高），记忆召回放<b>尾部</b> <code>&lt;system-reminder&gt;</code>；Hermes 反其道把记忆放 system prompt——两种选择各有一整套理由，读完第二/四部分你会自己判断。
+</div>
+
+<h3 id="basics-lifecycle">0.5 Agent 一轮的生命周期（记忆事件的时间轴）</h3>
+<div class="flow">
+<span class="step">① 会话启动<br><small>加载指令/记忆</small></span><span class="arrow">→</span>
+<span class="step">② 用户输入<br><small>召回相关记忆</small></span><span class="arrow">→</span>
+<span class="step">③ 模型推理<br><small>（命中 KV cache）</small></span><span class="arrow">→</span>
+<span class="step">④ 工具调用×N<br><small>结果回填上下文</small></span><span class="arrow">→</span>
+<span class="step">⑤ 回复用户</span><span class="arrow">→</span>
+<span class="step">⑥ 轮后处理<br><small>后台抽取记忆</small></span><span class="arrow">→</span>
+<span class="step">⑦ 压缩/会话结束<br><small>巩固到长期</small></span>
+</div>
+<table>
+<tr><th>时间点</th><th>发生了什么</th><th class="cc">Claude Code</th><th class="oc">OpenClaw</th><th class="hm">Hermes</th><th class="ds">dsh</th></tr>
+<tr><td>① 启动</td><td>指令/记忆装载</td><td>getMemoryFiles + buildMemoryPrompt</td><td>Project Context 预算注入</td><td>load_from_disk 冻结快照</td><td>agent-instructions 基线消息</td></tr>
+<tr><td>② 用户输入</td><td>召回</td><td>Sonnet 选择器异步预取</td><td>trigger 匹配 + memory_search</td><td>provider prefetch(8s)</td><td>（插件自定）</td></tr>
+<tr><td>③ 推理</td><td>缓存命中</td><td colspan="4">各家前缀不变量（见 0.3 表）</td></tr>
+<tr><td>④ 工具调用</td><td>上下文增长</td><td>nested CLAUDE.md 懒加载</td><td>—</td><td>memory 工具可用</td><td>touch → 指令对账</td></tr>
+<tr><td>⑤/⑥ 轮后</td><td>异步写入</td><td>extract_memories fork</td><td>日记追加 + flush</td><td>sync_all 单 worker</td><td>（无）</td></tr>
+<tr><td>⑦ 压缩/结束</td><td>巩固</td><td>autocompact→摘要→重注入；auto-dream ≥24h</td><td>dreaming cron 0 3 * * *</td><td>archive_and_compact</td><td>compaction 事件对</td></tr>
+</table>
+
+<h3 id="basics-memtiers">0.6 人类记忆类比：为什么成熟系统都是「三层」</h3>
+<table>
+<tr><th>人类</th><th>Agent 对应物</th><th class="cc">Claude Code</th><th class="oc">OpenClaw</th><th class="hm">Hermes</th></tr>
+<tr><td>工作记忆</td><td>上下文窗口</td><td>context + compaction</td><td>turn 内上下文</td><td>context + 压缩</td></tr>
+<tr><td>短期记忆</td><td>会话级暂存</td><td>Session Memory 文件</td><td><code>memory/日期.md</code></td><td>（无，直接 FTS）</td></tr>
+<tr><td>长期记忆</td><td>持久化文件/库</td><td>memory/ 目录</td><td>MEMORY.md + SQLite</td><td>MEMORY.md/USER.md</td></tr>
+<tr><td>睡眠巩固</td><td>离线整理</td><td>auto-dream（≥24h+5会话）</td><td>dreaming（凌晨3点）</td><td>（无，靠 nudge）</td></tr>
+</table>
+
+<h3 id="basics-budget">0.7 预算思维：一切都是限额工程</h3>
+<div class="beginner">
+读四个项目的源码，最震撼的不是「记什么」而是<b>处处都是预算</b>。记忆系统的真实面貌是「一张限额表」——初学者做系统时请先写这张表，再写代码：
+</div>
+<table>
+<tr><th>预算项</th><th class="cc">Claude Code</th><th class="oc">OpenClaw</th><th class="hm">Hermes</th><th class="ds">dsh</th></tr>
+<tr><td>记忆总容量</td><td>无硬限（靠 dream 修剪）</td><td>MEMORY.md 10,000 字符</td><td><b>2200 / 1375 字符</b></td><td>—</td></tr>
+<tr><td>索引注入</td><td>200 行 / 25,000 字节</td><td>预算内截断注入</td><td>全量（因为总量已被限死）</td><td>基线 65,536 字节</td></tr>
+<tr><td>单条召回</td><td>200 行 / 4KB 每文件</td><td>trigger ≤1800 字符/轮</td><td>—</td><td>单文件读 ≤1MiB</td></tr>
+<tr><td>会话累计召回</td><td>60KB</td><td>≤3 条/轮</td><td>—</td><td>—</td></tr>
+<tr><td>候选规模</td><td>≤200 文件进清单</td><td>trigger 候选 ≤24</td><td>条目 8~15 / 5~10</td><td>—</td></tr>
+<tr><td>后台任务</td><td>extract ≤5 轮；dream ≤20 轮</td><td>dreaming 子代理有界重写</td><td>失败 ≤3 次/轮；prefetch 8s；排水 5s</td><td>写批延迟 200ms</td></tr>
+</table>
+
+<div class="pagebreak" data-label="—— 第一部分 ——"></div>
+
+<!-- ================================================================ -->
+<h2 id="paradigms">第一部分 · 全景：四大项目，四种记忆哲学</h2>
+<div class="grid2">
+<div class="card"><div class="card-title cc">Claude Code —— 「文件即记忆 + 子代理整理」</div>Anthropic 的 CLI 编程 Agent。记忆 = 磁盘 Markdown（每条一个文件 + 索引）；写入靠主对话 Write 或<b>后台 fork</b>；召回靠<b>小模型（Sonnet）读清单做选择</b>（不是向量！）；整理靠 auto-dream。哲学：<b>尽可能文件化，智能问题交给模型本身</b>。</div>
+<div class="card"><div class="card-title oc">OpenClaw —— 「认知科学全家桶」</div>分层记忆（日记→梦境巩固→门控晋升）+ SQLite 混合检索（向量+全文+衰减+重要度）+ 溯源信任分级。哲学：<b>把记忆当可度量、可遗忘、可审计的信息系统</b>。</div>
+<div class="card"><div class="card-title hm">Hermes —— 「有界自管理 + 缓存不变量」</div>硬字符上限的自编辑记忆块，溢出即报错逼模型合并；<b>冻结快照</b>注入保缓存。哲学：<b>用稀缺性强迫提炼，用不变量保护缓存</b>。全量历史靠 FTS5 事后检索兜底。</div>
+<div class="card"><div class="card-title ds">dsh —— 「内核只保事实，智能外包」</div>内核不做语义记忆：只保证①每个 token 都写入 append-only 日志；②AGENTS.md 以缓存友好的基线消息注入。哲学：<b>先把「事实」存对，再谈「智能」检索</b>。</div>
+</div>
+
+<h2 id="matrix">总对比矩阵</h2>
+<table>
+<tr><th>维度</th><th class="cc">Claude Code</th><th class="oc">OpenClaw</th><th class="hm">Hermes</th><th class="ds">dsh</th></tr>
+<tr><td><b>长期记忆载体</b></td><td><code>~/.claude/projects/&lt;repo&gt;/memory/</code>：MEMORY.md 索引 + 单事实主题文件（<b>不可变</b>）</td><td>工作区 MEMORY.md（10,000 字符）+ 日期日记 + SQLite 索引</td><td><code>~/.hermes/memories/MEMORY.md</code>(2200)/USER.md(1375)，§分隔</td><td>无内置；AGENTS.md/CLAUDE.md 项目链</td></tr>
+<tr><td><b>写入者</b></td><td>主对话 Write 或后台 fork（extract_memories, ≤5轮）</td><td>agent 追加日记 → dreaming 子代理重写（失败回退 append）</td><td>memory 工具 add/replace/remove</td><td>人类手写；变更自动通知</td></tr>
+<tr><td><b>召回</b></td><td><b>Sonnet LLM 选择器</b>读 frontmatter 清单选 ≤5 条</td><td>memory_search：<b>0.7×向量+0.3×BM25</b>，精确路径独立 tier</td><td>SQLite FTS5（自研 CJK bigram）</td><td>无；外包生态</td></tr>
+<tr><td><b>注入</b></td><td>索引入系统提示记忆段；召回包 <code>&lt;system-reminder&gt;</code> 尾部附加</td><td>预算内 Project Context；trigger ≤3条/轮</td><td>系统提示冻结快照</td><td>一次性基线 user 消息 + append 刷新</td></tr>
+<tr><td><b>巩固</b></td><td>auto-dream（≥24h+≥5会话，fork ≤20轮）</td><td>Light/REM/Deep，cron 0 3 * * *</td><td>无自动压缩；每10轮 nudge</td><td>compaction 改投影不改日志</td></tr>
+<tr><td><b>压缩</b></td><td>7 种机制（2.13-2.15）</td><td>memory flush + 摘要</td><td>archive_and_compact（水位保证）</td><td>surface 替换 = durable 事件</td></tr>
+<tr><td><b>信任/安全</b></td><td>fork 工具沙箱；autoMemoryDirectory 拒绝 projectSettings 来源</td><td>origin class 写进 SQL CHECK；untrusted 禁自动注入</td><td>快照级威胁扫描+隐形Unicode黑名单</td><td>&lt;/system-reminder&gt; 转义+symlink 边界</td></tr>
+<tr><td><b>代码规模（记忆相关）</b></td><td>~6 个目录（memdir/extractMemories/autoDream/SessionMemory/compact/claudemd）</td><td>extensions/memory-core（数十文件）+ active-memory</td><td>memory_tool.py + memory_manager.py(57KB) + state(~15K行)</td><td>2 个包族（agent-instructions + session-persistence）</td></tr>
+</table>
+
+<h2 id="howto">如何使用本教程</h2>
+<div class="beginner">
+三条阅读路径：<b>①快速选型</b>：第〇部分 → 对比矩阵 → 7.5 选型建议（20 分钟）；<b>②动手开发</b>：第〇部分 → 第二部分 2.2/2.6/2.7 → 第七部分全部（半天）；<b>③完整研究</b>：顺序通读 + 对照本地仓库（五个仓库已克隆在 D:\memory 下，文中每个 文件:行号 都可直接打开验证）。所有代码块右上角可在<b>源码 ⇄ 伪代码</b>之间切换：源码视图用于研究实现细节，伪代码视图用于理解算法结构——初学者建议先看伪代码再看源码。
+</div>
+
+<div class="pagebreak" data-label="—— 第二部分 ——"></div>
+
+<!-- ================================================================ -->
+<h2>第二部分 · Claude Code 源码级剖析 <span class="tag" style="background:rgba(240,136,62,.15);color:var(--orange)">基于去混淆 TypeScript 源码</span></h2>
+<p>基于 <a class="src" href="https://github.com/claude-code-best/claude-code">claude-code-best/claude-code</a>。Claude Code 的记忆是<b>三套并行系统</b>，初学者最容易混淆：</p>
+<ol>
+<li><b>CLAUDE.md 体系</b>——人类编写的指令记忆（项目规范、个人偏好）</li>
+<li><b>memdir 自动记忆</b>——Agent 自己写的学习笔记（本章主角）</li>
+<li><b>Session Memory</b>——为压缩服务的「当前会话笔记」（独立系统）</li>
+</ol>
+<div class="ascii">                    ┌──────────────────────────────────────────────────┐
+   人类编写          │ CLAUDE.md 体系（claudemd.ts）                      │
+   ─────────►  启动  │  Managed → User → (root→CWD 的 Project/Local)      │──► messages[0]
+                    │  + .claude/rules/*.md（无条件）                      │   &lt;project-instructions&gt;
+                    │  + 子目录 CLAUDE.md（读文件时懒加载→尾部附加）        │
+                    └──────────────────────────────────────────────────┘
+                    ┌──────────────────────────────────────────────────┐
+   Agent 自己写      │ memdir 自动记忆（memdir/ + extractMemories/）      │
+   ─────────►  轮后  │  扫描(≤200文件,前30行) → Sonnet选≤5 → 尾部注入      │──► 尾部 &lt;system-reminder&gt;
+                    │  MEMORY.md 索引(200行/25KB) 随系统提示记忆段注入     │
+                    │  autoDream ≥24h 巩固（fork ≤20轮）                  │
+                    └──────────────────────────────────────────────────┘
+                    ┌──────────────────────────────────────────────────┐
+   压缩辅助          │ Session Memory（services/SessionMemory/）          │
+   ─────────►  后台  │  持续摘要会话笔记 → SM-Compact 时替代摘要调用       │──► 压缩产物
+                    └──────────────────────────────────────────────────┘</div>
+
+<h3 id="cc-map">2.1 源码地图</h3>
+<div class="card filetree"><span class="dir">src/</span>
+<span class="dir">memdir/</span>                          <span class="c"># ★ 自动记忆核心：paths / memdir / memoryTypes / memoryScan /</span>
+                                     <span class="c">#   findRelevantMemories / memoryAge / teamMemPaths</span>
+<span class="dir">services/extractMemories/</span>         <span class="c"># ★ 后台记忆抽取 fork（extractMemories.ts + prompts.ts）</span>
+<span class="dir">services/autoDream/</span>               <span class="c"># ★ 后台巩固 + consolidationLock + consolidationPrompt</span>
+<span class="dir">services/teamMemorySync/</span>          <span class="c">#   团队记忆 watcher / pull / push</span>
+<span class="dir">services/SessionMemory/</span>          <span class="c"># ★ 另一套：会话笔记（服务压缩）</span>
+<span class="dir">services/compact/</span>                <span class="c"># ★★ 压缩全家桶（7 种机制）</span>
+<span class="dir">utils/claudemd.ts</span>                <span class="c"># ★★ CLAUDE.md/rules 发现、@import、拼接（~1400 行）</span>
+<span class="dir">utils/attachments.ts</span>             <span class="c"># ★ 附件注入引擎（召回/嵌套/日期变更/计划提醒…）</span>
+<span class="dir">utils/api.ts · context.ts · query.ts</span> <span class="c"># 上下文组装与注入位置</span>
+<span class="dir">commands/memory* · local-memory/ · memory-stores/</span> <span class="c"># UI 命令</span></div>
+
+<h3 id="cc-claudemd">2.2 CLAUDE.md 加载管线（src/utils/claudemd.ts）</h3>
+<p>文件头注释即规范（<code>claudemd.ts:1-26</code>）：</p>
+<blockquote><p>1. Managed memory（如 /etc/claude-code/CLAUDE.md）— 全员指令<br>
+2. User memory（~/.claude/CLAUDE.md）— 个人全局<br>
+3. Project memory（CLAUDE.md、.claude/CLAUDE.md、.claude/rules/*.md）<br>
+4. Local memory（CLAUDE.local.md）— 个人项目级<br>
+…「离当前目录越近的文件优先级越高（<b>后加载</b>）」</p></blockquote>
+<div class="beginner">「后加载 = 更高优先级」：模型对<b>末尾</b>内容注意力更高，所以越具体的指令排越后。所有文件<b>拼接合并</b>而非覆盖。</div>
+
+<div class="codeview"><div class="cv-bar"><span class="cv-title">src/utils/claudemd.ts:848-877 · 目录发现与排序</span></div>
+<pre class="cv src"><code><span class="src-line">// TypeScript · 去混淆源码</span><span class="kw">const</span> dirs: <span class="nu">string</span>[] = []
+<span class="kw">let</span> currentDir = originalCwd
+<span class="kw">while</span> (currentDir !== parse(currentDir).root) {
+  dirs.push(currentDir)                    <span class="cm">// 从 CWD 向上收集到根</span>
+  currentDir = dirname(currentDir)
+}
+<span class="kw">for</span> (<span class="kw">const</span> dir <span class="kw">of</span> dirs.reverse()) {          <span class="cm">// 反转成 根→CWD</span>
+  <span class="cm">// 依次尝试: CLAUDE.md → .claude/CLAUDE.md → .claude/rules/*.md(无条件) → CLAUDE.local.md</span>
+}</code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · 算法结构</span>
+函数 加载CLAUDE.md层次(工作目录):
+    目录链 = [从工作目录沿父目录一路到根]      <span class="cm">// 例如 /a/b/c → [/a/b/c, /a/b, /a, /]</span>
+    结果列表 = []
+    对 dir in 反转(目录链):                    <span class="cm">// 根先、CWD 后 → 越近越晚加载 → 优先级越高</span>
+        对 文件 in [CLAUDE.md, .claude/CLAUDE.md, .claude/rules/*.md, CLAUDE.local.md]:
+            若 存在(文件) 且 该层级未被设置排除:
+                结果列表.追加(读取并展开import(文件))
+    返回 拼接(结果列表)                        <span class="cm">// 合并不覆盖</span></code></pre></div>
+
+<p><b>条件规则</b>（带 <code>globs:</code> frontmatter）不启动加载，读文件时匹配注入（<code>processConditionedMdRules, claudemd.ts:1353-1396</code>）：</p>
+<div class="codeview cvtoggle"><input type="radio" name="cv21" id="cv21-s" checked><input type="radio" name="cv21" id="cv21-p"><div class="cv-bar"><span class="cv-title">.claude/rules/ 条件规则 · 文件示例与匹配逻辑</span><label for="cv21-s">源码</label><label for="cv21-p">伪代码</label></div><pre class="cv src"><code><span class="cm"># .claude/rules/testing.md —— 只有读到测试文件时才注入</span>
+---
+globs: ["src/**/*.test.ts", "tests/**/*"]
+---
+测试必须用 vitest，禁止 jest；mock 一律放 __mocks__/。
+
+<span class="cm">// claudemd.ts:1369-1394 匹配实现：</span>
+<span class="kw">return</span> conditionedRuleMdFiles.filter(file =&gt; {
+  <span class="kw">const</span> baseDir = type === <span class="st">'Project'</span> ? dirname(dirname(rulesDir)) : getOriginalCwd()
+  <span class="kw">return</span> ignore().add(file.globs).ignores(relativePath)   <span class="cm">// glob 引擎</span>
+})</code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码</span>
+规则文件 = frontmatter 带 globs 的 .md
+启动时: 跳过它们（省 token）
+当工具读取文件 F 时:
+    对 每条规则 R:
+        相对路径 = F 相对于 R 的基准目录（Project 规则以 .claude 上级为基准；User 规则以 CWD 为基准）
+        若 R.globs 匹配 相对路径:
+            尾部附加注入 R 内容（带去重 Set）</code></pre></div>
+
+<h4>注入位置：不是 system prompt，是首条 user 消息</h4>
+<div class="codeview cvtoggle"><input type="radio" name="cv22" id="cv22-s" checked><input type="radio" name="cv22" id="cv22-p"><div class="cv-bar"><span class="cv-title">src/utils/api.ts:443-485 · prependUserContext</span><label for="cv22-s">源码</label><label for="cv22-p">伪代码</label></div><pre class="cv src"><code><span class="cm">// Extract claudeMd as a dedicated high-weight user message so it isn't
+// buried inside the generic &lt;system-reminder&gt; with the "may or may not be
+// relevant" disclaimer, which would degrade its instructional weight.</span>
+<span class="kw">const</span> { claudeMd, ...rest } = context
+<span class="kw">if</span> (claudeMd) {
+  result.push(createUserMessage({
+    content: <span class="st">`&lt;project-instructions&gt;\n${claudeMd}\n&lt;/project-instructions&gt;\n`</span>,
+    isMeta: <span class="nu">true</span>,
+  }))
+}
+<span class="kw">if</span> (restEntries.length &gt; <span class="nu">0</span>) {
+  result.push(createUserMessage({
+    content: <span class="st">`&lt;system-reminder&gt;\nAs you answer the user's questions, you can use the
+      following context:\n...IMPORTANT: this context may or may not be relevant...`</span>,
+    isMeta: <span class="nu">true</span>,
+  }))
+}</code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码</span>
+函数 组装请求消息(对话历史, 上下文):
+    高权重槽 = "&lt;project-instructions&gt;" + 上下文.claudeMd + "&lt;/project-instructions&gt;"
+    消息 = [用户消息(高权重槽, meta标记)] + 对话历史      <span class="cm">// ← 永远在最前 → 缓存最深</span>
+    若 上下文还有 git状态/日期等:
+        消息.插入(用户消息("&lt;system-reminder&gt;...may or may not be relevant...&lt;/system-reminder&gt;", meta))
+    返回 消息
+<span class="c" style="color:#6a9955">// 要点: 指令用"高权重"标签包裹且不带"可能无关"免责声明;
+// 杂项用低权重标签包裹并明确告知模型"可能无关"</span></code></pre></div>
+
+<p><b>子目录 CLAUDE.md 懒加载</b>：启动只向上发现；CWD <b>之下</b>的 CLAUDE.md 在工具读到该目录文件时，以 <code>nested_memory</code> attachment 在会话<b>尾部</b>注入（<code>attachments.ts:1770-1800</code>，<code>loadedNestedMemoryPaths</code> Set 去重）。注入顺序有明确规定（<code>attachments.ts:1834-1837</code>注释）：① Managed/User 条件规则 → ② CWD→目标路径沿途目录的 CLAUDE.md+无条件+条件规则 → ③ CWD 以上目录的条件规则。</p>
+
+<h3 id="cc-import">2.3 @import 展开（claudemd.ts:450-534）</h3>
+<div class="codeview cvtoggle"><input type="radio" name="cv23" id="cv23-s" checked><input type="radio" name="cv23" id="cv23-p"><div class="cv-bar"><span class="cv-title">src/utils/claudemd.ts:458, 536, 628-631 · @指令解析</span><label for="cv23-s">源码</label><label for="cv23-p">伪代码</label></div><pre class="cv src"><code><span class="kw">const</span> includeRegex = /(?:^|\s)@((?:[^\s\\]|\\ )+)/g     <span class="cm">// @path · @./p · @~/p · @/p；`\ ` 转义空格</span>
+<span class="kw">const</span> MAX_INCLUDE_DEPTH = <span class="nu">5</span>
+<span class="kw">if</span> (processedPaths.has(normalizedPath) || depth &gt;= MAX_INCLUDE_DEPTH) <span class="kw">return</span> []
+<span class="cm">// 用 marked Lexer 把 md 解析成 token，只在叶子文本节点提取 @path
+// （代码块/行内代码里的 @ 不展开；#heading 片段剥离；html 注释剥离后再扫）
+// cwd 之外的 include 需 hasClaudeMdExternalIncludesApproved 审批
+// 扩展名白名单 TEXT_FILE_EXTENSIONS 阻止二进制</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码</span>
+函数 展开导入(文件, 已处理集合, 深度):
+    若 深度 &gt;= 5 或 文件 in 已处理集合: 返回 []        <span class="cm">// 防循环 + 防爆炸</span>
+    已处理集合.加入(文件)
+    tokens = Markdown词法解析(读(文件))
+    结果 = [主文件本身]
+    对 token in tokens:
+        若 token 是代码块或行内代码: 跳过            <span class="cm">// 代码里的 @ 不是导入</span>
+        对 每个 @路径 in 正则提取(token.文本):
+            路径 = 剥离#锚点(路径); 若在 cwd 外 且 未审批: 跳过
+            若 扩展名(路径) 不在 白名单: 跳过
+            结果.追加(展开导入(路径, 已处理集合, 深度+1))
+    返回 结果
+<span class="cm">// 注意: import 是"启动时全量内联"——组织了结构但不省 token！</span></code></pre></div>
+<div class="beginner">初学者常见误区：以为 <code>@file</code> 是「按需加载」。错——<b>import 启动时全量展开内联</b>，不省 token。想省 token 用条件规则（globs）或子目录懒加载。</div>
+
+<h3 id="cc-memdir">2.4 memdir：目录发现与提示词</h3>
+<div class="codeview cvtoggle"><input type="radio" name="cv24" id="cv24-s" checked><input type="radio" name="cv24" id="cv24-p"><div class="cv-bar"><span class="cv-title">src/memdir/paths.ts:92-93, 168-235 · 目录解析链</span><label for="cv24-s">源码</label><label for="cv24-p">伪代码</label></div><pre class="cv src"><code><span class="kw">export const</span> AUTO_MEM_DIRNAME = <span class="st">'memory'</span>
+<span class="kw">export const</span> AUTO_MEM_ENTRYPOINT_NAME = <span class="st">'MEMORY.md'</span>
+
+<span class="cm">// settings.autoMemoryDirectory 只接受 policy/local/user 来源，</span>
+<span class="cm">// 故意排除 projectSettings —— 防恶意仓库把它指向 ~/.ssh</span>
+<span class="kw">export const</span> getAutoMemPath = memoize((): <span class="nu">string</span> =&gt; {
+  <span class="kw">const</span> override = getAutoMemPathOverride() ?? getAutoMemPathSetting()
+  <span class="kw">if</span> (override) <span class="kw">return</span> override
+  <span class="kw">return</span> join(getMemoryBaseDir(), <span class="st">'projects'</span>,
+    sanitizePath(getAutoMemBase()), AUTO_MEM_DIRNAME) + sep  <span class="cm">// canonicalGitRoot</span>
+}, () =&gt; getProjectRoot())</code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码</span>
+函数 记忆目录():
+    若 环境变量覆盖存在: 返回 它
+    若 settings.autoMemoryDirectory 存在 且 来源∈{policy,local,user}:   <span class="cm">// 不信任仓库!</span>
+        校验(拒绝相对路径/盘根/UNC/含\0 → NFC归一化)
+        返回 它
+    返回 ~/.claude/projects/<span class="st">规范化(git规范根目录)</span>/memory/
+    <span class="cm">// git 规范根 = 同仓库所有 worktree 共享同一记忆目录</span></code></pre></div>
+<p>开关链：<code>CLAUDE_CODE_DISABLE_AUTO_MEMORY</code> → <code>CLAUDE_CODE_SIMPLE</code> → 远程会话无持久存储 → <code>autoMemoryEnabled</code> 设置 → 默认开启。</p>
+<p>保存机制：<b>没有独立 memory 工具</b>——系统提示（<code>memdir.ts:419-507 loadMemoryPrompt</code>）指导模型用普通 Write/Edit，两步流程：①写主题文件（单事实一段落，<b>不可变</b>）；②MEMORY.md 加一行指针（"one line, under ~150 characters"）。目录保证存在（提示词明说 "do not run mkdir"）。</p>
+
+<h3 id="cc-types">2.5 四类记忆：定义、示例与「什么不该存」</h3>
+<table>
+<tr><th>type</th><th>定义（提示词原文要点）</th><th>示例</th><th>正文结构要求</th></tr>
+<tr><td><code>user</code></td><td>关于用户的信息，每文件一个细节（角色/目标/职责/知识领域/偏好）；<b>避免写成对用户的负面评判</b></td><td>"user_role.md: 用户是 DevOps，管理 3 个生产集群"</td><td>一段落</td></tr>
+<tr><td><code>feedback</code></td><td>用户对工作方式的指导（避免什么+坚持什么）；<b>从失败和成功两方面都记</b>——只记纠错会让模型过度保守</td><td>"feedback_testing.md: 用户要求测试永远先跑单测再跑集成"</td><td>规则 + <b>Why:</b> + <b>How to apply:</b></td></tr>
+<tr><td><code>project</code></td><td>进行中的工作/目标/bug/事件，<b>不可从代码或 git 推导</b>；相对日期必须转绝对日期</td><td>"project_migration.md: 2026-03-05 用户说周四冻结分支"</td><td>事实 + Why + How</td></tr>
+<tr><td><code>reference</code></td><td>外部系统的指针（bug 在哪个 Linear 项目、反馈在哪个 Slack 频道）</td><td>"reference_tracking.md: bug 走 ENG-123 看板"</td><td>一段落</td></tr>
+</table>
+<blockquote><p><b>What NOT to save</b>：代码模式/架构/路径（读项目即得）· git 历史 · debug 修复（fix 在代码里）· CLAUDE.md 已有内容 · 临时任务细节——<b>「这些排除项即使用户明确要求保存也适用」</b>；用户要存 PR 列表时，追问什么是<b>令人意外或非显然</b>的部分。</p></blockquote>
+<div class="beginner">核心产品思想：<b>记忆的价值密度来自「不可推导性」</b>。能从代码/git/文档推导的信息存进记忆是浪费（还有过期风险）。两条 eval 验证过的护栏：<b>WHEN_TO_ACCESS</b>（用户说 ignore memory 时不得引用/比较/提及记忆内容）与 <b>TRUSTING_RECALL</b>（"memory says X exists" ≠ "X exists now"，推荐前必须验证——记忆是时点观察非实时状态）。</div>
+
+<h3 id="cc-extract">2.6 后台记忆抽取：extract_memories fork</h3>
+<div class="codeview cvtoggle"><input type="radio" name="cv25" id="cv25-s" checked><input type="radio" name="cv25" id="cv25-p"><div class="cv-bar"><span class="cv-title">src/services/extractMemories/extractMemories.ts:412-424, 120-221 · fork 与沙箱</span><label for="cv25-s">源码</label><label for="cv25-p">伪代码</label></div><pre class="cv src"><code>runForkedAgent({
+  querySource: <span class="st">'extract_memories'</span>,
+  maxTurns: <span class="nu">5</span>,                  <span class="cm">// "Well-behaved extractions complete in 2-4 turns</span>
+                        <span class="cm">//  (read → write). A hard cap prevents verification rabbit-holes."</span>
+  skipTranscript: <span class="nu">true</span>,
+})
+<span class="cm">// 互斥: hasMemoryWritesSince() 检测主对话已写记忆 → 跳过并推进游标</span>
+<span class="cm">// 游标: lastMemoryMessageUuid 成功后才推进; 进行中到达的调用 stash 到
+//       pendingContext, finally 里跑 trailing run</span>
+<span class="cm">// 工具沙箱 createAutoMemCanUseTool:</span>
+<span class="cm">//   Read/Grep/Glob 不限 · Bash 仅 tool.isReadOnly · Edit/Write 仅限记忆目录
+//   其余 deny + 上报 tengu_auto_mem_tool_denied</span>
+<span class="cm">// 预注入现有记忆清单（scanMemoryFiles）避免浪费一轮 ls</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · 每轮查询循环结束后</span>
+函数 轮后抽取(对话游标):
+    若 主对话自游标以来已写过记忆文件: 推进游标; 返回      <span class="cm">// 别抢主对话的活</span>
+    若 自上次抽取以来没有用户文本: 返回
+    fork = 派生子代理(
+        提示 = "只用最近 ~N 条消息的内容抽取记忆。
+                不许 grep 源码、不许读代码验证模式、不许跑 git。
+                第1轮: 并行 Read 现有记忆清单; 第2轮: 并行 Write 新记忆。
+                重复的事实跳过; 过时的记忆 rm 掉写新的。绝不就地编辑。",
+        最大轮数 = 5,
+        工具白名单 = {读类工具: 全放行, Bash: 仅只读, 写类: 仅记忆目录})
+    若 fork 成功: 推进游标; 插入系统消息 "memory_saved"
+    若期间又来一次触发: 暂存上下文, 最后跑一次合并的 trailing run
+    关机前: 最多等 60 秒排干未完成的抽取</code></pre></div>
+<div class="beginner">为什么 fork？①<b>主对话上下文与缓存零污染</b>；②<b>沙箱</b>——fork 只能写记忆目录；③<b>maxTurns 硬上限</b>防「验证无底洞」。这个模式在 Hermes（缓存对等 review fork）与 OpenClaw（dreaming 隔离子代理）同样出现——<b>2026 年记忆系统的共识架构</b>。</div>
+
+<h3 id="cc-recall">2.7 召回：Sonnet 选择器（三段式流水线）</h3>
+<div class="ascii">① 扫描 SCAN                ② 选择 SELECT                    ③ 注入 INJECT
+memoryScan.ts              findRelevantMemories.ts           attachments.ts
+┌────────────────┐   ┌──────────────────────────┐   ┌────────────────────────┐
+│ 递归 readdir    │   │ sideQuery(默认 Sonnet)    │   │ 每用户轮异步预取         │
+│ 过滤 .md       │ ─►│ 输入: Query + 清单(name+  │ ─►│ 跳过单词输入            │
+│ 排除 MEMORY.md │   │       description)        │   │ 每文件 ≤200行/4KB      │
+│ 只读前30行fm   │   │ 输出: json_schema         │   │ 会话累计 ≤60KB         │
+│ mtime 新→旧    │   │  {selected_memories[]}    │   │ 包 &lt;system-reminder&gt;   │
+│ 上限 200 文件  │   │ max_tokens=256, "up to 5" │   │ 在尾部以 meta user 消息  │
+└────────────────┘   │ 不确定就不选               │   │ 呈现; header 用快照保稳定│
+                     └──────────────────────────┘   └────────────────────────┘</div>
+<div class="codeview cvtoggle"><input type="radio" name="cv26" id="cv26-s" checked><input type="radio" name="cv26" id="cv26-p"><div class="cv-bar"><span class="cv-title">src/memdir/findRelevantMemories.ts:102-128 · 选择器调用</span><label for="cv26-s">源码</label><label for="cv26-p">伪代码</label></div><pre class="cv src"><code><span class="kw">const</span> out = <span class="kw">await</span> sideQuery({
+  system: SELECT_MEMORIES_SYSTEM_PROMPT,   <span class="cm">// "up to 5"; 不确定就不选;</span>
+                                          <span class="cm">// 工具用法文档不选但坑/警告要选</span>
+  user: <span class="st">`Query: ${query}\n\nAvailable memories:\n${manifest}`</span>,
+  json_schema: { selected_memories: <span class="nu">string</span>[] },
+  max_tokens: <span class="nu">256</span>,
+})</code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码</span>
+函数 召回(用户查询):
+    清单 = []
+    对 文件 in 记忆目录.所有md(排除MEMORY.md, 按修改时间新→旧)[:200]:
+        清单.追加({name, description})            <span class="cm">// 只解析前30行 frontmatter</span>
+    选择 = 小模型.调用(                            <span class="cm">// 便宜+快, 默认 Sonnet</span>
+        系统 = "从清单里选最多5条与查询相关的记忆。不确定就不选。
+                最近用过的工具的用法文档不选；但坑和警告要选。",
+        用户 = "Query: {查询}\n\n清单: {清单}",
+        强制JSON输出 = {selected_memories: 字符串数组})
+    对 每条 in 选择: 校验文件存在 → 读全文 → 截到200行/4KB
+    若 会话累计已注入 &gt; 60KB: 截断
+    返回 包裹("&lt;system-reminder&gt;", 各条+新鲜度header)
+<span class="cm">// 全程无 embedding、无向量库 —— 用模型能力换工程复杂度</span></code></pre></div>
+<div class="beginner">为什么不用向量库？个人记忆库通常几十~几百条，frontmatter 的 description 本来就是「为判断相关性而写」的——小模型读清单直接选，<b>更简单、零基础设施、还更准</b>（LLM 语义理解远强于余弦相似度）。规模到千条以上才需要检索式方案（见第三章 OpenClaw）。注意召回<b>也有预算</b>（200 文件/4KB 每条/60KB 会话）——不是多多益善。</div>
+
+<h3 id="cc-index">2.8 MEMORY.md 索引：双限额与截断</h3>
+<div class="codeview cvtoggle"><input type="radio" name="cv27" id="cv27-s" checked><input type="radio" name="cv27" id="cv27-p"><div class="cv-bar"><span class="cv-title">src/memdir/memdir.ts:34-38, 57-103 · 限额与截断算法</span><label for="cv27-s">源码</label><label for="cv27-p">伪代码</label></div><pre class="cv src"><code><span class="kw">export const</span> MAX_ENTRYPOINT_LINES = <span class="nu">200</span>
+<span class="cm">// ~125 chars/line at 200 lines. At p97 today; catches long-line indexes that
+// slip past the line cap (p100 observed: 197KB under 200 lines).</span>
+<span class="kw">export const</span> MAX_ENTRYPOINT_BYTES = <span class="nu">25_000</span>
+
+<span class="cm">// truncateEntrypointContent: 先按行截断 → 再按字节在最后一个换行处截断
+//   → 附加 WARNING 说明哪个 cap 触发
+//   ("Keep index entries to one line under ~200 chars; move detail into topic files")</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码</span>
+函数 截断索引(内容):
+    行数超 200?  取前 200 行 + 警告("行数超限, 每条索引保持一行≤200字符, 细节移入主题文件")
+    字节数超 25000?  在最后一个换行处截到字节内 + 警告("字节超限")
+    返回 截断后内容
+<span class="cm">// 限额来源: 真实用户数据分位数 —— 200行拦住 p97, 25KB 兜底拦"行数合格
+// 但单行超长"(实测 p100 案例: 200 行内塞了 197KB)。数据驱动的限额设计。</span></code></pre></div>
+
+<h3 id="cc-age">2.9 记忆年龄与新鲜度</h3>
+<div class="codeview cvtoggle"><input type="radio" name="cv28" id="cv28-s" checked><input type="radio" name="cv28" id="cv28-p"><div class="cv-bar"><span class="cv-title">src/memdir/memoryAge.ts:6-42 · 年龄文字化</span><label for="cv28-s">源码</label><label for="cv28-p">伪代码</label></div><pre class="cv src"><code><span class="cm">// 年龄 = mtime 距今天数（注释: "Models are poor at date arithmetic"）</span>
+memoryAge(mtime) → <span class="st">"today" | "yesterday" | "N days ago"</span>
+<span class="cm">// &gt;1 天的记忆注入陈旧警告:</span>
+<span class="st">"This memory is N days old. Memories are point-in-time observations,
+ not live state..."</span>
+<span class="cm">// 注入 header:</span>
+memoryHeader(path, mtimeMs) = <span class="st">`${staleness}\n\nMemory: ${path}:`</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码</span>
+函数 新鲜度标注(文件):
+    天数 = 今天 - 文件.修改时间
+    若 天数 == 0: 文字 = "today"
+    若 天数 == 1: 文字 = "yesterday"
+    否则: 文字 = "{天数} days ago"
+    若 天数 &gt; 1: 返回 "This memory is {天数} days old. Memories are
+                    point-in-time observations, not live state...
+                    \n\nMemory: {路径}:"
+    否则: 返回 "Memory (saved {文字}): {路径}:"
+<span class="cm">// 教训: 模型不会算日期——给文字,别给时间戳; 顺带声明记忆是"时点观察"</span></code></pre></div>
+
+<h3 id="cc-team">2.10 团队记忆：目录、同步协议与两次事故</h3>
+<div class="flow"><span class="step">启动 pullTeamMemory</span><span class="arrow">→</span><span class="step">fs.watch 监视 team/ 目录</span><span class="arrow">→</span><span class="step">2 秒 debounce</span><span class="arrow">→</span><span class="step">pushTeamMemory → GitHub 仓库</span></div>
+<ul>
+<li>团队记忆 = <code>memory/team/</code> 子目录 + 独立 MEMORY.md（flag <code>tengu_herring_clock</code>）。</li>
+<li>失败分类：no_oauth / no_repo / 4xx（除 409/429）= <b>永久失败</b>并抑制重试——注释记录事故：<b>"one no_oauth device emitted 167K push events over 2.5 days"</b>。</li>
+<li>安全：<code>realpathDeepestExisting / validateTeamMemWritePath / validateTeamMemKey</code> 防穿越防符号链接（标注 PSR M22186）+ secretScanner + 提示词明令 "never save API keys or user credentials"。</li>
+<li>服务器有条目上限，超限提示合并："local entries exceeds server cap of N; M file(s) will NOT sync… Consider consolidating"。</li>
+</ul>
+
+<h3 id="cc-dream">2.11 Auto-Dream：睡眠巩固的工程实现</h3>
+<div class="codeview cvtoggle"><input type="radio" name="cv29" id="cv29-s" checked><input type="radio" name="cv29" id="cv29-p"><div class="cv-bar"><span class="cv-title">src/services/autoDream/ · 三道门与锁</span><label for="cv29-s">源码</label><label for="cv29-p">伪代码</label></div><pre class="cv src"><code><span class="cm">// 触发三道门（按检查成本从低到高）:</span>
+① 时间: 距上次巩固 ≥ 24h（GB flag tengu_onyx_plover 可调）
+② 会话数: 自 lastConsolidatedAt 起 ≥ 5 个（排除当前会话）
+③ 锁: .consolidate-lock —— 锁文件 mtime 即 lastConsolidatedAt
+      acquire 检查持锁 PID 是否存活; 失败 rollbackConsolidationLock
+<span class="cm">// 扫描节流: SESSION_SCAN_INTERVAL_MS = 10 分钟</span>
+执行: forked agent(buildConsolidationPrompt, maxTurns: <span class="nu">20</span>,
+      工具沙箱复用 createAutoMemCanUseTool)
+进度: DreamTask 后台任务面板可杀死并回滚锁</code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · 四阶段巩固提示词</span>
+函数 巩固():
+    若 距上次 &lt; 24h: 返回                     <span class="cm">// 门1: 时间</span>
+    若 新会话数 &lt; 5: 返回                     <span class="cm">// 门2: 会话数(防低频用户空转)</span>
+    若 拿不到锁(锁文件存在 且 持锁PID还活着): 返回    <span class="c">// 门3: 并发锁(锁mtime=上次巩固时间)</span>
+    fork = 派生子代理(最大轮数=20, 工具仅限记忆目录):
+        阶段1 读现状: 扫描全部记忆文件+索引
+        阶段2 收集信号: 日志 / 内容漂移的记忆 / 必要时 grep 历史 transcript
+        阶段3 合并巩固: 同类聚簇→删簇写新文件; 相对日期→绝对日期;
+                      删除被后续事实证伪的条目; created 日期取簇内最老
+        阶段4 修剪重建索引: 强制 ≤200 行 且 ≤25KB
+    若被用户杀死: 回滚锁的 mtime</code></pre></div>
+
+<h3 id="cc-sessionmemory">2.12 Session Memory：第三套系统</h3>
+<div class="note"><b>别混淆</b>：<code>sessionMemory.ts</code> 是<b>为压缩服务的会话笔记</b>——后台持续摘要对话进一个 markdown，同样 fork（<code>querySource:'session_memory'</code>），工具沙箱只允许 Edit 那一个文件。与 memdir 自动记忆<b>完全平行</b>。另：<code>/memory</code> 命令只是打开编辑器；<code>useMemoryUsage.ts</code> 监控的是 Node 进程堆内存（1.5GB/2.5GB 阈值）——与记忆系统<b>无关</b>。</div>
+
+<h3 id="cc-compact-autoc">2.13 Autocompact：阈值体系与压缩提示词</h3>
+<div class="codeview cvtoggle"><input type="radio" name="cv30" id="cv30-s" checked><input type="radio" name="cv30" id="cv30-p"><div class="cv-bar"><span class="cv-title">src/services/compact/autoCompact.ts:28-120 · 阈值</span><label for="cv30-s">源码</label><label for="cv30-p">伪代码</label></div><pre class="cv src"><code>MAX_OUTPUT_TOKENS_FOR_SUMMARY = <span class="nu">20_000</span>
+AUTOCOMPACT_BUFFER_TOKENS = <span class="nu">13_000</span>
+WARNING_THRESHOLD_BUFFER_TOKENS = <span class="nu">20_000</span>      <span class="cm">// 提前警告线</span>
+MANUAL_COMPACT_BUFFER_TOKENS = <span class="nu">3_000</span>
+MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES = <span class="nu">3</span>    <span class="cm">// 熔断</span>
+getAutocompactBufferTokens(model):             <span class="cm">// 窗口越大预留越多</span>
+  effectiveWindow &gt;= 800_000 → <span class="nu">50_000</span>
+  effectiveWindow &gt;= 400_000 → <span class="nu">30_000</span>
+  else → <span class="nu">13_000</span>
+effectiveWindow = min(contextWindow, env CLAUDE_CODE_AUTO_COMPACT_WINDOW)
+                   − min(maxOutput, 20000)
+trigger: tokenCountWithEstimation(messages) − snipTokensFreed &gt;= threshold
+<span class="cm">// 递归防护: 排除 session_memory/compact/marble_origami 来源的查询</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码</span>
+函数 有效窗口(模型) = min(模型窗口, 环境覆盖) - min(最大输出, 20000)
+函数 预留(模型):
+    若 有效窗口 ≥ 80万: 5万      <span class="cm">// 大窗口任务更重, 多留余量</span>
+    若 ≥ 40万: 3万
+    否则: 1.3万
+每轮结束:
+    估算token(全部消息) - snip已释放量 ≥ 有效窗口 - 预留 ?
+        → 触发自动压缩
+    连续失败 3 次 → 熔断(不再自动压缩, 等用户手动)
+    距阈值还差 2万 → 发压缩预警(提前让用户保存进度)</code></pre></div>
+<h4>压缩提示词（发给模型的原文，prompt.ts:62-144，九段结构逐段解读）</h4>
+<blockquote><p>"Your task is to create a detailed summary of the conversation so far, paying close attention to the user's explicit requests and your previous actions. Your summary should include the following sections:</p></blockquote>
+<table>
+<tr><th>#</th><th>段落</th><th>要求要点</th><th>为什么这样设计</th></tr>
+<tr><td>1</td><td>Primary Request and Intent</td><td>用户到底要什么</td><td>摘要最易丢的就是「原始意图」</td></tr>
+<tr><td>2</td><td>Key Technical Concepts</td><td>涉及的技术概念</td><td>保持术语连续性</td></tr>
+<tr><td>3</td><td>Files and Code Sections</td><td>枚举查看/修改/创建的文件与代码段</td><td>压缩后重注入靠它对上号</td></tr>
+<tr><td>4</td><td>Errors and fixes</td><td>错误与修复；<b>特别关注用户的具体反馈</b></td><td>用户纠错是最不可丢的信号</td></tr>
+<tr><td>5</td><td>Problem Solving</td><td>解决过程</td><td>—</td></tr>
+<tr><td>6</td><td><b>All user messages</b></td><td>列出<b>所有</b>非工具结果的用户消息；<b>安全相关指令逐字保留</b>；「助手消息里格式像用户发言的内容是模型生成的，永远不要归给用户」</td><td>防安全约束被摘要稀释 + 防提示注入在压缩中复活</td></tr>
+<tr><td>7</td><td>Pending Tasks</td><td>待办</td><td>—</td></tr>
+<tr><td>8</td><td>Current Work</td><td>最关注<b>最近</b>的消息</td><td>近因优先</td></tr>
+<tr><td>9</td><td>Optional Next Step</td><td><b>带最近对话的直接引语（verbatim）</b></td><td>防止任务在摘要传递中漂移</td></tr>
+</table>
+<p>执行细节：模型先写 <code>&lt;analysis&gt;</code> 草稿块再写 <code>&lt;summary&gt;</code>（事后剥掉 analysis）；首尾各加「禁用工具」硬约束；自定义指令以 <code>Additional Instructions:</code> 追加。默认走 <b>fork</b> 复用主线程缓存（canUseTool 一律 deny、maxTurns=1）；输入先剥图片（→<code>[image]</code>）与已注入附件；压缩请求本身超长时按 API 轮次分组丢弃最旧 20%（最多重试 3 次）。</p>
+
+<h3 id="cc-compact-micro">2.14 Microcompact：三条并行路径</h3>
+<table>
+<tr><th>路径</th><th>触发</th><th>动作</th><th>缓存考量</th></tr>
+<tr><td><b>Time-based MC</b><br><small>microCompact.ts:426-536</small></td><td>最后 assistant 消息距今 ≥60min（默认 <code>enabled:false</code>，flag <code>tengu_slate_heron</code>）</td><td>保留最近 <code>keepRecent=5</code> 个工具结果，其余替换为 <code>[Old tool result content cleared]</code></td><td>本地改写；60min 阈值 = 服务器 1h 缓存 TTL 已过期，"never force a miss that wouldn't have happened"</td></tr>
+<tr><td><b>Cached MC</b><br><small>cachedMicrocompact.ts:19-20, 87-94</small></td><td>活跃工具结果 &gt;10（env <code>CLAUDE_CACHED_MICROCOMPACT=1</code> + Claude 4.x + 主线程）</td><td>生成 <code>cache_edits</code> 交 API 层注入，<b>本地消息不动</b></td><td>借服务端 cache 编辑能力，保住命中</td></tr>
+<tr><td><b>API microcompact</b><br><small>apiMicrocompact.ts:16-17</small></td><td>API 原生 context management：<code>trigger 180_000 input_tokens</code></td><td><code>clear_tool_uses_20250919</code>（clear_at_least=180k−40k）；<code>clear_thinking_20251015</code>（空闲&gt;1h 只留最近 1 个 thinking）</td><td>API 服务端执行</td></tr>
+</table>
+<div class="codeview cvtoggle"><input type="radio" name="cv31" id="cv31-s" checked><input type="radio" name="cv31" id="cv31-p"><div class="cv-bar"><span class="cv-title">src/services/compact/cachedMicrocompact.ts:87-94 · 计数触发</span><label for="cv31-s">源码</label><label for="cv31-p">伪代码</label></div><pre class="cv src"><code>TRIGGER_THRESHOLD = <span class="nu">10</span>;  KEEP_RECENT = <span class="nu">5</span>
+<span class="kw">export function</span> getToolResultsToDelete(state) {
+  <span class="kw">const</span> active = state.toolOrder.filter(id =&gt; !state.deletedRefs.has(id))
+  <span class="kw">if</span> (active.length &lt;= triggerThreshold) <span class="kw">return</span> []
+  <span class="kw">const</span> toDelete = active.slice(<span class="nu">0</span>, active.length - keepRecent)
+  <span class="kw">return</span> toDelete      <span class="cm">// 交给 API 层做成 cache_edits，本地消息不变</span>
+}
+<span class="cm">// COMPACTABLE_TOOLS = Read/Shell/Grep/Glob/WebSearch/WebFetch/Edit/Write</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码</span>
+函数 该删哪些工具结果(状态):
+    活跃 = 按顺序记录的工具结果id列表 - 已删除的
+    若 活跃数 ≤ 10: 返回 空          <span class="cm">// 不值得动</span>
+    返回 活跃[0 : 活跃数-5]          <span class="cm">// 删最老的, 保最近5个; 只针对
+                                    <span class="c">// Read/Bash/Grep/... 这些"输出可再生"的工具</span>
+    <span class="cm">// 关键: 不是本地删——生成 cache_edits 指令让服务端在缓存里删,
+    //      本地消息原样保留 → 请求前缀不变 → 缓存仍命中</span></code></pre></div>
+
+<h3 id="cc-compact-snip">2.15 Snip 与 Session-Memory Compact</h3>
+<ul>
+<li><b>snipCompact</b>：模型/用户登记「整条消息删除」——写 <code>snip_boundary</code> 系统消息记待删 UUID，发 API 前过滤（4 chars/token 估算，释放量经 <code>snipTokensFreed</code> 回传 autocompact 判定）；≥30 条消息发 nudge 提醒可 snip。三者对比：<b>snip</b> 删任意消息（本地移除）；<b>cached MC</b> 只删工具结果（服务端 cache_edits，本地不动）；<b>time-based MC</b> 本地替换为占位符。</li>
+<li><b>SM-Compact</b>（sessionMemoryCompact.ts:57-61, 405-434）：autocompact 触发时<b>先试这条</b>——会话笔记已覆盖足够新（保留窗口 minTokens=10K / minTextBlockMessages=5 / maxTokens=40K，且 <code>adjustIndexToPreserveAPIInvariants</code> 保证不拆散 tool_use/result 对与同 id thinking 块）→ <b>直接用笔记替代压缩 API 调用</b>；压完仍超阈值才回退 legacy compact。</li>
+<li><b>reactiveCompact</b>：兜底——API 报 prompt-too-long 时紧急压缩（threshold=0）。</li>
+</ul>
+
+<h3 id="cc-postcompact">2.16 压缩后重注入：什么被「救回来」</h3>
+<pre><code>POST_COMPACT_MAX_FILES_TO_RESTORE = <span class="nu">5</span>       <span class="cm">// 最近读过的文件重读</span>
+POST_COMPACT_TOKEN_BUDGET = <span class="nu">50_000</span>
+POST_COMPACT_MAX_TOKENS_PER_FILE = <span class="nu">5_000</span>
+POST_COMPACT_MAX_TOKENS_PER_SKILL = <span class="nu">5_000</span>   <span class="cm">// 已调用 skill 重注入</span>
+POST_COMPACT_SKILLS_TOKEN_BUDGET = <span class="nu">25_000</span>
+<span class="cm">// 消息序: boundaryMarker → summary → messagesToKeep(剥toolUseResult)
+//         → attachments → hookResults</span></code></pre>
+<ul>
+<li>重读最近 5 个文件（plan 与 CLAUDE.md 排除——后者随 messages[0] 重建）；重放 plan、已调用 skills（超限加 "[… use Read on the skill path …]"）、异步 agent 状态、delta attachments；SessionStart hooks（source='compact'）重跑。</li>
+<li>摘要消息含逃生通道："If you need specific details from before compaction … read the full transcript at: …"。</li>
+<li>缓存细节：<code>getUserContext.cache</code> 清空、<code>loadedNestedMemoryPaths.clear()</code>——子目录记忆重新懒加载，<code>loadReason='compact'</code> 触发 InstructionsLoaded hook。<b>刻意不</b>重置 <code>sentSkillNames</code>（避免 4K token 的 skill 清单重放）。</li>
+</ul>
+
+<h3 id="cc-attach">2.17 Attachments 全景：尾部注入的统一引擎</h3>
+<p><code>attachments.ts</code> 是「往会话尾部塞上下文」的统一引擎，所有动态内容都走它（保缓存前缀）。注册点（<code>attachments.ts:876-934</code>）：</p>
+<table>
+<tr><th>attachment 类型</th><th>触发时机</th><th>内容</th></tr>
+<tr><td><code>relevant_memories</code></td><td>每用户轮异步预取</td><td>召回的记忆（≤5 条，见 2.7）</td></tr>
+<tr><td><code>nested_memory</code></td><td>工具读到更深层目录</td><td>该目录的 CLAUDE.md + 条件规则</td></tr>
+<tr><td><code>date_change</code></td><td>跨午夜</td><td>新日期（<b>不清缓存</b>，只在尾部追加）</td></tr>
+<tr><td>plan reminder</td><td>计划模式下</td><td>当前 plan 文件内容</td></tr>
+<tr><td>deferred tools / MCP / agent listing</td><td>按需</td><td>工具通告（delta 化，空历史才全量）</td></tr>
+</table>
+
+<h3 id="cc-config">2.18 配置速查（Claude Code 记忆/压缩）</h3>
+<table>
+<tr><th>配置</th><th>类型</th><th>作用</th></tr>
+<tr><td><code>autoMemoryEnabled</code></td><td>settings 布尔</td><td>自动记忆总开关</td></tr>
+<tr><td><code>autoMemoryDirectory</code></td><td>settings 路径</td><td>记忆目录覆盖（仅 policy/local/user 来源，防仓库投毒）</td></tr>
+<tr><td><code>CLAUDE_CODE_DISABLE_AUTO_MEMORY</code></td><td>env</td><td>禁用自动记忆</td></tr>
+<tr><td><code>CLAUDE_CODE_AUTO_COMPACT_WINDOW</code></td><td>env</td><td>覆盖自动压缩的有效窗口</td></tr>
+<tr><td><code>CLAUDE_AUTOCOMPACT_PCT_OVERRIDE</code></td><td>env</td><td>覆盖触发阈值百分比</td></tr>
+<tr><td><code>CLAUDE_CACHED_MICROCOMPACT=1</code></td><td>env</td><td>启用 cache_edits 式微压缩（Claude 4.x）</td></tr>
+<tr><td><code>claudeMdExcludes</code></td><td>settings glob[]</td><td>跳过无关 monorepo 的 CLAUDE.md</td></tr>
+<tr><td><code>hasClaudeMdExternalIncludesApproved</code></td><td>config</td><td>放行 cwd 外的 @import</td></tr>
+</table>
+
+<div class="pagebreak" data-label="—— 第三部分 ——"></div>
+
+<!-- ================================================================ -->
+<h2>第三部分 · OpenClaw：把记忆当信息系统来工程化</h2>
+<p>仓库 <a class="src" href="https://github.com/openclaw/openclaw">openclaw/openclaw</a>（本地克隆精读，记忆代码在 <code>extensions/memory-core/src/</code> 与 <code>extensions/active-memory/</code>）。与 Claude Code 的「简单文件+模型智能」相反，OpenClaw 把每个认知概念做成<b>可度量、可配置、带实验注释的子系统</b>。先看全景图：</p>
+<div class="ascii">工作区 ~/.openclaw/workspace/
+├── SOUL.md / IDENTITY.md / USER.md / AGENTS.md ──────────► 指令层（始终注入）
+├── MEMORY.md ────────────── 精选长期记忆（磁盘预算 10,000 字符）
+│     └ 条目注解: &lt;!-- trigger: … --&gt; &lt;!-- importance: N --&gt; &lt;!-- project: … --&gt;
+├── memory/2026-08-30.md ─── 情景日记（今天+昨天在 /new 时载入）
+├── memory/.dreams/ ──────── dreaming 短期暂存        ┌──────────────────────┐
+├── DREAMS.md ───────────── 巩固报告（给人看）         │   SQLite（每 agent）  │
+└── memory/imports/… ─────── 迁移导入（只索引）  ◄────┤ chunks+embedding     │
+                                                       │ recall_metadata      │
+  写入流: agent 追加日记 → 压缩前 memory flush          │ provenance(溯源)     │
+        → 会话摄入(session-ingestion, 带溯源)           │ FTS5 + vec0 向量     │
+        → dreaming 三相(凌晨3点 cron)                   │ tombstones(删除墓碑) │
+        → promote 门控 → MEMORY.md                     └──────────────────────┘
+  读取流: memory_search(混合打分) + trigger 匹配(≤3条/轮) + memory_get</div>
+
+<h3 id="oc-arch">3.1 工作区、注入与预算</h3>
+<p>原生 Codex 路径下工作区文件按优先级表注入（<code>attempt-context.ts:56</code>：bootstrap.md 权重 50 等）；但 <b>MEMORY.md 被明确排除在直接注入外</b>（attempt-context.ts:866）："MEMORY.md exists … as a memory file, not an instruction file. OpenClaw does not paste its contents into native Codex turns; use … when durable memory is relevant"——又是「按需读 &gt; 全量注入」。</p>
+<div class="codeview cvtoggle"><input type="radio" name="cv32" id="cv32-s" checked><input type="radio" name="cv32" id="cv32-p"><div class="cv-bar"><span class="cv-title">extensions/memory-core/src/memory-budget.ts:1-45 · 磁盘预算压缩</span><label for="cv32-s">源码</label><label for="cv32-p">伪代码</label></div><pre class="cv src"><code><span class="cm">// Strategy: drop the OLDEST auto-promoted sections (date-ordered) until
+// the file plus the new section fit within the budget. ...</span>
+<span class="kw">export const</span> DEFAULT_MEMORY_FILE_MAX_CHARS = <span class="nu">10_000</span>;
+<span class="kw">const</span> WRITE_OVERHEAD_RESERVE = <span class="nu">21</span>;
+<span class="cm">// PROMOTION_ENTRY_MARKER_RE = /^&lt;!--\s*openclaw-memory-promotion:.*--&gt;\s*$/i</span>
+<span class="cm">// isGeneratedPromotionBlock(): 只有能被该正则完整识别为"机器生成"的区块
+//   才可被压缩删除；人工内容无条件保留（混合内容也保留）</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码</span>
+函数 写入记忆区块(MEMORY.md, 新区块):
+    若 len(MEMORY.md) + len(新区块) ≤ 10000: 直接追加; 返回
+    机器区块 = MEMORY.md 中匹配"机器晋升标记"注释的连续区块（按日期排序）
+    对 最老的机器区块 in 机器区块:                 <span class="c">// 只删机器写的!</span>
+        删除它
+        若 现在放得下了: 追加新区块; 返回
+    还是放不下: 拒绝写入（调用方需先整理）
+<span class="cm">// 设计: 人工写的记忆永远不因预算被自动删除——机器删机器的</span></code></pre></div>
+<p><b>常青保护</b>：MEMORY.md、USER.md 及非日期命名文件不参与时间衰减（<code>temporal-decay.ts: isEvergreenMemoryPath</code>）——衰减只作用于有「时效性」的日记类内容。</p>
+
+<h3 id="oc-trigger">3.2 Trigger 注解注入：阈值是被实验校准的</h3>
+<div class="codeview cvtoggle"><input type="radio" name="cv33" id="cv33-s" checked><input type="radio" name="cv33" id="cv33-p"><div class="cv-bar"><span class="cv-title">extensions/active-memory/trigger-recall.ts:8-18, 33-88 · 匹配管线</span><label for="cv33-s">源码</label><label for="cv33-p">伪代码</label></div><pre class="cv src"><code><span class="kw">const</span> TRIGGER_CANDIDATE_LIMIT = <span class="nu">24</span>;
+<span class="kw">const</span> TRIGGER_INJECTION_LIMIT = <span class="nu">3</span>;           <span class="cm">// 每 turn 最多注入 3 条</span>
+<span class="kw">const</span> MAX_TRIGGER_CONTEXT_CHARS = <span class="nu">1800</span>;
+<span class="cm">// 0.65 measured on a 20-trigger/50-unrelated synthetic corpus: zero false
+// positives down to 0.60, while 0.72 rejected legitimate paraphrases and the
+// 0.68 ceiling of single-word concept triggers (0.85 * 0.8 phrase weight) ...</span>
+<span class="kw">const</span> STRONG_TRIGGER_MATCH_SCORE = <span class="nu">0.65</span>;
+
+<span class="cm">// 短语打分: 单词条目命中=0.85 · 多词精确序列=1
+//           · 否则 coverage*0.8 + min(1, overlap/2)*0.2</span>
+<span class="cm">// 综合分: triggerScore*0.8 + relevance(entry.score 截断[0,1])*0.2</span>
+<span class="cm">// 入选闸门 isPromotedTrustedMemoryEntry:
+//   source === "memory" &amp;&amp; provenance ∈ {owner, agent}
+//   &amp;&amp; 所有 projectKey 都处于激活态（防跨项目泄漏）</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · 每条入站消息触发</span>
+函数 触发召回(用户消息):
+    候选 = MEMORY.md 中带 trigger 注解的条目[:24]
+    对 条目 in 候选:
+        触发分 = 短语匹配(条目.trigger短语, 消息)
+            单词完全命中 → 0.85; 多词连续序列 → 1.0
+            部分命中 → 覆盖率*0.8 + 词重叠*0.2
+        综合分 = 触发分*0.8 + 条目自身相关度*0.2
+    强匹配 = [e for e in 候选 if 综合分 ≥ 0.65 且 通过信任闸门]
+    返回 强匹配[:3]（总字数 ≤1800，作为隐藏上下文注入）
+<span class="cm">// 信任闸门: 只有 owner/agent 来源且项目域匹配的条目才有资格被自动注入</span></code></pre></div>
+<div class="beginner">这段注释是全教程最珍贵的一课：<b>魔法数字必须留下实验依据</b>。0.72 不是「不够严」，而是错在「拒绝合法的同义改写」；0.68 是单词条目得分的数学上限（0.85×0.8）。初学者请养成习惯——每个阈值配一行「为什么是这个值、边界在哪」。</div>
+<p><b>注解从哪来</b>？晋升时自动生成（short-term-promotion-metadata.ts:55-68）：取候选 conceptTags 前 3 个作 trigger 短语（≤64 字符），importance = clamp(round(score×10), 3, 10)，附 project key；dreaming 巩固时会用正则把 <code>trigger:</code> 注解剥离净化。</p>
+
+<h3 id="oc-search">3.3 memory_search 打分公式（精确代码）</h3>
+<div class="codeview cvtoggle"><input type="radio" name="cv34" id="cv34-s" checked><input type="radio" name="cv34" id="cv34-p"><div class="cv-bar"><span class="cv-title">memory/hybrid.ts:206-236 + temporal-decay.ts + importance.ts · 完整管线</span><label for="cv34-s">源码</label><label for="cv34-p">伪代码</label></div><pre class="cv src"><code>DEFAULT_HYBRID_VECTOR_WEIGHT = <span class="nu">0.7</span>;  DEFAULT_HYBRID_TEXT_WEIGHT = <span class="nu">0.3</span>;
+
+<span class="kw">const</span> keywordScore =
+  entry.textScore &gt; <span class="nu">0</span> ? entry.rankingScore            <span class="cm">// BM25</span>
+    : entry.exactPathSpecificity &gt; <span class="nu">0</span> ? <span class="nu">0</span>
+    : entry.pathScore;
+<span class="kw">const</span> contentScore =
+  params.vectorWeight * entry.vectorScore + params.textWeight * keywordScore;
+<span class="kw">const</span> weightedScore =
+  entry.exactPathSpecificity &gt; <span class="nu">0</span>          <span class="cm">// 精确路径命中 → 独立 tier</span>
+    ? temporalDecayConfig.enabled
+      ? scoreExactPathTieForTemporalDecay(contentScore)  <span class="cm">// tier 下半区=身份,上半区=相关性</span>
+      : hasWeightedContentRelevance ? contentScore : <span class="nu">1</span>
+    : contentScore;
+<span class="cm">// 衰减: lambda = LN2 / halfLifeDays(30); multiplier = exp(-λ × ageDays)  [默认 enabled:false]</span>
+<span class="cm">// 重要度: importanceMultiplier(i) = 0.75 + clamp(floor(i),1,10) * 0.05   // ×0.80..×1.25</span>
+<span class="cm">// 管线: merge → temporal decay → importance multiplier → project ranking</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · 检索打分全流程</span>
+函数 记忆搜索(查询, 项目域):
+    向量候选 = 近邻检索(嵌入(查询), topN)          <span class="c">// vec0 虚拟表</span>
+    全文候选 = FTS5 BM25(查询)                    <span class="c">// 关键词</span>
+    对 每个条目 e (合并去重):
+        内容分 = 0.7×e.向量相似度 + 0.3×e.BM25分
+        若 用户查询里精确指名了路径 且 e 就是它:
+            e 进"精确tier"                          <span class="c">// 独立通道,分数可固定为1
+                                                              // 衰减只能tier内排序,
+                                                              // "cannot cross the exact-
+                                                              // identifier tier"</span>
+        否则: e 进"内容tier", 分数 = 内容分
+    对 每个条目:
+        若 不是常青文件(MEMORY.md/USER.md/非日期文件):
+            分数 *= exp(-ln2/30 × 距今天数)          <span class="c">// 30天半衰期,默认关闭</span>
+        分数 *= 0.75 + 1..10的重要度 × 0.05          <span class="c">// 最多放大到1.25</span>
+    按项目域加权排序; 返回 topN
+<span class="cm">// 三条经验: 权重温和(无一主导) / 精确命中独占tier / 衰减是危险的opt-in功能</span></code></pre></div>
+
+<h3 id="oc-prov">3.4 溯源四分类与摄入去重</h3>
+<div class="codeview cvtoggle"><input type="radio" name="cv35" id="cv35-s" checked><input type="radio" name="cv35" id="cv35-p"><div class="cv-bar"><span class="cv-title">memory-entry-origins.ts:60-68 + session-ingestion.ts:351-380 · 溯源与降级</span><label for="cv35-s">源码</label><label for="cv35-p">伪代码</label></div><pre class="cv src"><code><span class="kw">CREATE TABLE</span> memory_entry_origins (
+  entry_key TEXT <span class="kw">NOT NULL</span>, agent_id TEXT <span class="kw">NOT NULL</span>, session_id TEXT <span class="kw">NOT NULL</span>,
+  origin_class TEXT <span class="kw">NOT NULL CHECK</span> (origin_class <span class="kw">IN</span>
+    (<span class="st">'owner'</span>,<span class="st">'agent'</span>,<span class="st">'untrusted'</span>,<span class="st">'system'</span>)),
+  observed_at INTEGER <span class="kw">NOT NULL</span>, PRIMARY KEY (entry_key, agent_id, session_id)) STRICT;
+
+<span class="cm">// 外部 JSONL 一律强制降级:</span>
+<span class="cm">// "Foreign JSONL is caller-controlled; only canonical stores authenticate provenance."</span>
+<span class="kw">const</span> provenance = params.source.foreign
+  ? { ...parsedProvenance, originClass: <span class="st">"untrusted"</span> } : parsedProvenance;
+
+<span class="cm">// 摄入去重键: hash(scope ‖ basis ‖ snippet)  basis ∈ {ts:&lt;ms&gt;, line:&lt;n&gt;}</span>
+<span class="cm">// 机器内容排除: entry.generatedByDreamingNarrative || generatedByCronRun → skip</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码</span>
+函数 摄入会话(transcript, 来源):
+    对 每条证据(带行级定位):
+        溯源 = { 谁说的: owner|agent|untrusted|system, 会话类型, 时间戳, 沿革键 }
+        若 来源.是外部文件:               <span class="c">// 外部内容无法认证来源</span>
+            溯源.谁说的 = untrusted        <span class="c">// 强制降级</span>
+        若 证据是机器生成的(dreaming叙述/cron记录): 跳过   <span class="c">// 防自我污染</span>
+        去重键 = hash(范围 + 定位 + 内容片段)
+        入库(chunks + embedding + recall元数据 + 溯源)
+<span class="cm">// 消费端闸门: isMemoryOriginEligibleForAutomaticInjection(o) = o∈{owner,agent}
+//   → untrusted/system 内容结构性无法进入自动注入/trigger 注入</span></code></pre></div>
+<div class="beginner">为什么重要：记忆是<b>持久化的提示注入面</b>。攻击者诱导 Agent 把「忽略之前指令」写进记忆，之后<b>每个会话</b>中毒。OpenClaw 的解法：让「内容是谁说的」成为<b>数据库 CHECK 约束</b>而非运行时检查——外部导入一律 untrusted，untrusted <b>结构性无法</b>自动注入。另有 <code>memory_session_tombstones</code> 支持溯源删除（right-to-forget）：<code>openclaw memory forget --session/--participant/--since</code>。</div>
+
+<h3 id="oc-dream">3.5 Dreaming 三相与安全回退</h3>
+<div class="codeview cvtoggle"><input type="radio" name="cv36" id="cv36-s" checked><input type="radio" name="cv36" id="cv36-p"><div class="cv-bar"><span class="cv-title">dreaming-phases.ts:85-129 + dreaming-consolidation.ts:536-551 · 三相与验证</span><label for="cv36-s">源码</label><label for="cv36-p">伪代码</label></div><pre class="cv src"><code>{ heading: <span class="st">"## Light Sleep"</span>, startMarker: <span class="st">"&lt;!-- openclaw:dreaming:light:start --&gt;"</span>, ... }
+{ heading: <span class="st">"## REM Sleep"</span>,  ... }        <span class="cm">// + Deep = 晋升</span>
+<span class="cm">// Light: 短期召回条目按 lastRecalledAt/recallCount 排序 → 相似度去重
+//        → 按梦境日记覆盖度重排 → limit 截断 → 写当日 phase block</span>
+<span class="cm">// REM: minPatternStrength 识别跨日复发模式</span>
+<span class="cm">// Deep: 晋升闸门驱动 → 写入 MEMORY.md</span>
+DEFAULT_MEMORY_DREAMING_FREQUENCY = <span class="st">"0 3 * * *"</span>   <span class="cm">// managed cron, isolated, 不投递</span>
+
+<span class="cm">// 巩固产出必须过 validateConsolidatedMemory: 损失率 / 预算 / token 上限
+// 任一失败 → rejected = true → "using append-only fallback"
+// (异常/无结构化输出/会话终止同样回退)</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · 每晚3点</span>
+函数 做梦():
+    <span class="c">// Light 浅睡: 把最近常被召回的短期内容排进今日梦境区块</span>
+    候选 = 短期记忆.按(最近召回时间, 召回次数)排序
+    候选 = 相似度去重(候选)[:limit]
+    写入 今日日记的 "## Light Sleep" 区块
+    <span class="c">// REM: 找跨日复现的模式(强度 ≥ minPatternStrength)</span>
+    <span class="c">// Deep 深睡: 子代理重写 MEMORY.md</span>
+    产出 = 隔离子代理("合并重复; supersedesKey 指认的旧事实用新事实替代;
+                       剥离 trigger 注解; 不可信来源内容不得写入")
+    校验 = 检查(信息损失率, 字符预算, token上限)
+    若 校验全过: 用 产出 替换 MEMORY.md
+    否则:        只追加, 不改写      <span class="c">// "append-only fallback" — 永不丢数据</span>
+    报告写入 DREAMS.md（给人看, 永不注入）</code></pre></div>
+
+<h3 id="oc-promote">3.6 晋升闸门</h3>
+<div class="codeview cvtoggle"><input type="radio" name="cv37" id="cv37-s" checked><input type="radio" name="cv37" id="cv37-p"><div class="cv-bar"><span class="cv-title">src/memory-host-sdk/dreaming.ts:45-47 + promotion-utils.ts:34-41 · 闸门与权重</span><label for="cv37-s">源码</label><label for="cv37-p">伪代码</label></div><pre class="cv src"><code>DEFAULT_MEMORY_DEEP_DREAMING_MIN_SCORE = <span class="nu">0.75</span>;
+DEFAULT_MEMORY_DEEP_DREAMING_MIN_RECALL_COUNT = <span class="nu">3</span>;
+DEFAULT_MEMORY_DEEP_DREAMING_MIN_UNIQUE_QUERIES = <span class="nu">3</span>;
+<span class="cm">// 候选加权分权重:</span>
+frequency <span class="nu">0.24</span> · relevance <span class="nu">0.30</span> · diversity <span class="nu">0.15</span>
+recency <span class="nu">0.15</span> · consolidation <span class="nu">0.10</span> · conceptual <span class="nu">0.06</span>
+<span class="cm">// 执行侧拒绝原因逐条给出:
+//   score threshold (x &lt; 0.75) / signal threshold / query threshold</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码</span>
+函数 该晋升吗(短期候选):
+    加权分 = 0.24*出现频率 + 0.30*相关性 + 0.15*多样性
+           + 0.15*新近度 + 0.10*已巩固度 + 0.06*概念性
+    若 加权分 &lt; 0.75: 拒绝("分数不够")
+    若 被召回次数 &lt; 3: 拒绝("信号不足")          <span class="c">// 防一次巧合被永久记住</span>
+    若 不同查询数 &lt; 3: 拒绝("只被一个问法命中")   <span class="c">// 防单一入口命中</span>
+    通过 → 晋升进 MEMORY.md（自动附 trigger/importance/project 注解）</code></pre></div>
+<div class="beginner">「被 <b>3 个不同查询</b>召回过 3 次才能晋升」——防「一次巧合被永久记住」。人类遗忘同理：反复提取的记忆才巩固。<b>召回行为本身就是最便宜可靠的记忆价值信号</b>，比任何打分模型都好使。</div>
+
+<h3 id="oc-schema">3.7 SQLite Schema 全表</h3>
+<div class="card filetree"><span class="cm"># src/state/openclaw-agent-schema.sql（记忆相关部分）</span>
+<span class="dir">记忆索引</span>
+memory_index_sources     (id, path, source默认'memory', hash, mtime, size)  <span class="c"># UNIQUE(path,source)</span>
+memory_index_chunks      (id, path, source, start_line, end_line, hash, model, text, embedding)
+memory_index_chunk_recall_metadata (chunk_id FK, importance 1-10, triggers, project_key)
+memory_index_chunk_provenance (chunk_id FK, origin_class, session_kind, observed_at, supersedes_key)
+memory_index_state       (id=1, revision)   <span class="c"># chunks/sources 变更时触发器自增 → 重建栅栏</span>
+memory_embedding_cache   (provider, model, hash, embedding, dims)
+memory_entry_origins · memory_session_tombstones
+<span class="dir">全文/向量</span>
+session_transcript_fts (FTS5: text + UNINDEXED session_id/message_id/role/timestamp)
+standing_intents_fts
+CREATE VIRTUAL TABLE ... USING vec0(id TEXT PRIMARY KEY, embedding FLOAT[&lt;dims&gt;])
+<span class="dir">会话</span>
+session_nodes (session_key PK, entry_json canonical, status, created_via, owner_actor_*)
+session_windows (session_id PK, reason ∈ initial/reset/rollover/fork/rewind/switch/recovery/compaction)
+transcript_events (session_id, seq PK) · session_participants · session_pending_inputs</div>
+
+<h3 id="oc-cli">3.8 记忆工具与 CLI 命令全表</h3>
+<table>
+<tr><th>入口</th><th>命令/工具</th><th>作用</th></tr>
+<tr><td rowspan="3">Agent 工具<br><small>extensions/memory-core/src/tools.ts</small></td><td><code>memory_search</code></td><td>混合检索（3.3 的打分管线）</td></tr>
+<tr><td><code>memory_get</code></td><td>读文件或行区间（MEMORY.md 默认不注入，靠它按需读）</td></tr>
+<tr><td><code>intent</code></td><td>创建/列出/取消「事件条件化常驻意图」（SQLite 支撑）</td></tr>
+<tr><td rowspan="7">CLI<br><small>openclaw memory …</small></td><td><code>status --deep --index --fix --json</code></td><td>索引健康检查/修复</td></tr>
+<tr><td><code>index --force</code> / <code>search [query]</code></td><td>重建索引 / 命令行检索</td></tr>
+<tr><td><code>forget --session/--participant/--since</code></td><td>溯源删除（墓碑）</td></tr>
+<tr><td><code>promote</code> / <code>promote-explain</code></td><td>晋升（dry-run 默认，--apply 生效）/ 解释为什么(不)晋升</td></tr>
+<tr><td><code>rem-harness</code> / <code>rem-backfill</code></td><td>历史"grounded REM"回填进 DREAMS.md（--rollback 可回退）</td></tr>
+<tr><td><code>session-backfill --from --to</code></td><td>把归档 transcript 转成记忆（--rem/--apply）</td></tr>
+<tr><td><code>/dreaming</code> / <code>/context list|detail|map</code></td><td>手动触发巩固 / 检查注入预算占用</td></tr>
+</table>
+
+<h3 id="oc-intent">3.9 Standing Intents 与升级召回通道</h3>
+<div class="grid2">
+<div class="card"><div class="card-title">Standing Intents（SQLite 事件条件意图）</div><code>intent</code> 工具让 agent 登记「当 X 发生时提醒我做 Y」类跨会话意图——表 <code>standing_intents</code> + <code>standing_intents_fts</code>。这是「程序性记忆」（怎么做）之外对「意图记忆」（想做什么）的实现，四个项目里独一份。</div>
+<div class="card"><div class="card-title">Active-Memory 升级通道</div><code>extensions/active-memory/</code>：一个独立的<b>召回子代理</b>（recall.ts / escalation.ts / prompt.ts）。当主线程上下文紧张、不值得内联召回时，把检索工作升级（escalate）给这个后台 lane 去做——「召回本身也可以被外包」。</div>
+</div>
+
+<h3 id="oc-config">3.10 配置参考</h3>
+<pre><code><span class="cm"># agents.defaults</span>
+bootstrapMaxChars / bootstrapTotalMaxChars        <span class="cm"># 工作区文件注入预算（config 透传）</span>
+compaction.memoryFlush.enabled = <span class="nu">true</span>            <span class="cm"># 压缩前先 flush 未写观察</span>
+compaction.memoryFlush.model                     <span class="cm"># 本地模型可顶替（如 ollama/qwen3:8b）</span>
+<span class="cm"># plugins.entries.memory-core.config.dreaming</span>
+frequency = <span class="st">"0 3 * * *"</span>                          <span class="cm"># managed cron</span>
+deep.minScore = <span class="nu">0.75</span> · minRecallCount = <span class="nu">3</span> · minUniqueQueries = <span class="nu">3</span>
+<span class="cm"># memory.search</span>
+provider = openai | gemini | voyage | ollama | lmstudio | local-gguf
+rememberAcrossConversations = <span class="nu">false</span>              <span class="cm"># 跨会话召回（可信 agent 才开）</span>
+<span class="cm"># session</span>
+dmScope = main | per-peer | per-channel-peer | per-account-channel-peer
+reset.mode = none | daily | idle                  <span class="cm"># atHour=4 · idleMinutes</span></code></pre>
+
+<div class="pagebreak" data-label="—— 第四部分 ——"></div>
+
+<!-- ================================================================ -->
+<h2>第四部分 · Hermes：有界记忆与缓存不变量</h2>
+<p>仓库 <a class="src" href="https://github.com/nousresearch/hermes-agent">NousResearch/hermes-agent</a>。核心文件：<code>tools/memory_tool.py</code>、<code>agent/memory_manager.py</code>（57KB）、<code>agent/memory_provider.py</code>、<code>agent/background_review.py</code>、<code>hermes_state*.py</code>。Hermes 是四个项目里<b>约束最多、最「防模型」</b>的一个——每个机制都在假设「模型会犯懒/犯错/被注入」，然后用工程手段兜底。</p>
+<div class="ascii">┌─────────────────────── tools/memory_tool.py ────────────────────────┐
+│  MemoryStore                                                         │
+│  ├─ 磁盘: ~/.hermes/memories/MEMORY.md (≤2200字符) + USER.md (≤1375) │
+│  │        条目间 "\n§\n" 分隔 · 原子写(temp+rename) · 跨平台文件锁   │
+│  ├─ live 状态: memory_entries / user_entries   ←── 工具读写这里      │
+│  └─ _system_prompt_snapshot ────────────────  ←── 会话启动时冻结     │
+│         │  (构建时逐条威胁扫描, 毒条目 → [BLOCKED: …])               │
+│         ▼                                                            │
+│  system_prompt.py: 注入 volatile tier（46═分隔 + 用量% header）       │
+└──────────────────────────────────────────────────────────────────────┘
+   轮前: MemoryManager.prefetch_all (provider, 8s 超时, daemon 线程)
+   轮后: MemoryManager.sync_all (单 worker 后台执行器, 镜像到 provider)
+   每N轮: nudge → (可选) 缓存对等 review fork → write_approval 审批门</div>
+
+<h3 id="hm-store">4.1 有界存储：上限、溢出、原子批</h3>
+<div class="codeview cvtoggle"><input type="radio" name="cv38" id="cv38-s" checked><input type="radio" name="cv38" id="cv38-p"><div class="cv-bar"><span class="cv-title">tools/memory_tool.py:176-225, 452-465 · 上限与自纠正溢出</span><label for="cv38-s">源码</label><label for="cv38-p">伪代码</label></div><pre class="cv src"><code><span class="kw">def __init__</span>(self,
+    memory_char_limit: <span class="bu">int</span> = <span class="nu">2200</span>,     <span class="cm"># MEMORY.md（agent 笔记）</span>
+    user_char_limit:   <span class="bu">int</span> = <span class="nu">1375</span>,     <span class="cm"># USER.md（用户画像）</span>
+    *, memory_enabled=<span class="bu">True</span>, user_profile_enabled=<span class="bu">True</span>): ...
+
+ENTRY_DELIMITER = <span class="st">"\n§\n"</span>
+_MAX_CONSOLIDATION_FAILURES_PER_TURN = <span class="nu">3</span>
+
+<span class="kw">if</span> new_total &gt; limit:
+    <span class="kw">return</span> self._consolidation_failure({
+      <span class="st">"error"</span>: <span class="st">f"Memory at {current:,}/{limit:,} chars. Adding this entry
+            ({len(content)} chars) would exceed the limit. Consolidate now:
+            use 'replace' to merge overlapping entries into ..."</span>,
+      <span class="st">"current_entries"</span>: entries, <span class="st">"usage"</span>: ... })</code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码</span>
+函数 添加条目(目标, 内容):
+    若 内容与现有条目完全相同: 返回 "已存在, 未重复添加"
+    若 威胁扫描(内容) 命中: 返回 扫描错误            <span class="c">// strict 范围</span>
+    新总长 = len(现有条目.join("§")) + len(内容)
+    若 新总长 &gt; 上限(memory=2200 / user=1375):
+        本轮失败次数 += 1
+        若 本轮失败次数 &gt; 3: 返回 终止性错误        <span class="c">// issue#42405: 防无限重试
+                                                      //    吞掉用户回复</span>
+        返回 错误(精确用量 + 全部现有条目 + "请用 replace 合并后再加")
+    原子写入(临时文件 → rename)
+<span class="cm">// apply_batch 批量版: 预算只对"最终状态"校验 → 允许一次调用里先删后加;
+// 每个 op 触盘前逐个威胁扫描, 一毒拒全批</span></code></pre></div>
+<p>多重防线：去重三重（add 拒绝精确重复 / 加载时 <code>dict.fromkeys</code> / 锁下重读再去重）；磁盘安全（<code>atomic_write_text</code>；fcntl/msvcrt 锁；<b>外部漂移检测</b>——round-trip 不一致或单条目超全库上限即拒绝并写 <code>.bak.&lt;ts&gt;</code>，issue #26045；读失败返回 <code>_READ_FAILED</code> 哨兵拒绝覆写，防「读不到当空库」清空记忆）。</p>
+
+<h3 id="hm-snapshot">4.2 冻结快照：一个不变量换整场缓存</h3>
+<div class="codeview cvtoggle"><input type="radio" name="cv39" id="cv39-s" checked><input type="radio" name="cv39" id="cv39-p"><div class="cv-bar"><span class="cv-title">tools/memory_tool.py:11-14, 260-300, 706-771 · 快照机制</span><label for="cv39-s">源码</label><label for="cv39-p">伪代码</label></div><pre class="cv src"><code><span class="cm"># "Both are injected into the system prompt as a frozen snapshot at session
+#  start. Mid-session writes update files on disk immediately (durable) but
+#  do NOT change the system prompt -- this preserves the prefix cache for
+#  the entire session."</span>
+self._system_prompt_snapshot = {
+  <span class="st">"memory"</span>: self._render_block(<span class="st">"memory"</span>, sanitized_memory),
+  <span class="st">"user"</span>:   self._render_block(<span class="st">"user"</span>,   sanitized_user) }
+
+<span class="kw">def</span> <span class="fn">format_for_system_prompt</span>(self, target):
+    <span class="cm"># "Mid-session writes do not affect this. This keeps the system prompt
+    #  stable across all turns, preserving the prefix cache."</span>
+    <span class="kw">return</span> self._system_prompt_snapshot[target]
+
+separator = <span class="st">"═"</span> * <span class="nu">46</span>
+<span class="cm"># header: MEMORY (your personal notes) [37% — 814/2,200 chars]</span>
+<span class="cm"># _sanitize_entries_for_snapshot: 命中威胁模式的条目 → "[BLOCKED: …]"</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码</span>
+会话启动:
+    条目 = 解析(MEMORY.md) + 解析(USER.md)      <span class="c">// § 分隔</span>
+    对 每条: 若 威胁扫描命中: 替换为 "[BLOCKED: 原因]"   <span class="c">// 冻结前扫!</span>
+    快照 = 渲染(条目)                            <span class="c">// ═×46 分隔 + 用量% header</span>
+    system_prompt += 快照
+会话中:
+    工具写入 → 改磁盘 + live 条目 → <b>不动快照</b>     <span class="c">// prefix cache 不变量</span>
+下个会话: 重复启动流程 → 新记忆才进提示
+<span class="cm">// 为什么冻结前扫毒: "memory enters the system prompt as a FROZEN snapshot,
+//   so a poisoned entry persists for the entire session" — 从磁盘字节确定性
+//   出发, 快照整会话字节稳定</span></code></pre></div>
+<div class="beginner">Hermes 的取舍：会话中途存的记忆<b>自己看不见</b>（下个会话才进提示）。算笔账：改一次 system prompt = 会话内每次请求缓存全重算；而「新记忆晚几小时生效」几乎无感。<b>一致性 &gt; 时效性</b>——长会话 Agent 的标准权衡。</div>
+
+<h3 id="hm-tool">4.3 memory 工具：old_text 匹配、威胁扫描、审批门</h3>
+<div class="codeview cvtoggle"><input type="radio" name="cv40" id="cv40-s" checked><input type="radio" name="cv40" id="cv40-p"><div class="cv-bar"><span class="cv-title">tools/memory_tool.py:494-584, 949-1051 · replace/remove 与写入门</span><label for="cv40-s">源码</label><label for="cv40-p">伪代码</label></div><pre class="cv src"><code>matches = [(i, e) <span class="kw">for</span> i, e <span class="kw">in</span> enumerate(entries) <span class="kw">if</span> old_text <span class="kw">in</span> e]
+<span class="kw">if not</span> matches:       <span class="cm"># → 附 current_entries 重试</span>
+<span class="kw">if</span> len(matches) &gt; <span class="nu">1</span>:  <span class="cm"># 全同→操作首条；互异→"Be more specific."</span>
+
+<span class="cm"># MEMORY_SCHEMA: action ∈ [add, replace, remove]; target ∈ [memory, user]
+#   （无 read —— 内容已在 system prompt 里）; new_text 是 content 的别名</span>
+<span class="cm"># 漏传 old_text → _missing_old_text_error: 附完整条目清单 + 恢复指引 (#43412)</span>
+<span class="cm"># write_approval: _apply_write_gate → evaluate_gate(MEMORY, ...)
+#   allow / blocked / 否则 stage_write → {"success": true, "staged": true, "pending_id"}</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码</span>
+工具 memory(action, target, content?, old_text?, operations?):
+    若 配置.写审批开启 且 action 会修改:
+        结果 = 审批门.评估(写入)
+        若 需人工: 暂存写入; 返回 {staged: true, pending_id}   <span class="c">// 等 /memory approve</span>
+    分发 action:
+      add:     见 4.1
+      replace: 命中 = [含 old_text 子串的条目]
+               0 个 → 错误+全部条目(让模型看清单重试)
+               多个但内容互异 → "请给更具体的 old_text"
+               多个但全同 → 操作第一个
+               替换后同样做上限校验 + 威胁扫描
+      remove:  对称逻辑
+      batch:   逐 op 扫毒(一毒拒全批) → 预算只校验最终状态 → 原子落盘</code></pre></div>
+<p><b>威胁模式库</b>（tools/threat_patterns.py:142-159）：显式列隐形/双向 Unicode——ZWSP <code>\u200b</code>、ZWNJ <code>\u200c</code>、ZWJ <code>\u200d</code>、隐形算符 <code>\u2062-\u2064</code>、BOM <code>\ufeff</code>、RTL override <code>\u202e</code>，命中产出 <code>invisible_unicode_U+XXXX</code>；注入/渗出模式用 strict 范围（比对话内容更严，理由见 4.2 引文）。</p>
+
+<h3 id="hm-fts">4.4 全量会话检索：FTS5 ×3 与自研 CJK 分词器</h3>
+<div class="codeview cvtoggle"><input type="radio" name="cv41" id="cv41-s" checked><input type="radio" name="cv41" id="cv41-p"><div class="cv-bar"><span class="cv-title">hermes_state.py:3757-3765 + native/fts5_cjk/ · CJK 检索</span><label for="cv41-s">源码</label><label for="cv41-p">伪代码</label></div><pre class="cv src"><code><span class="kw">CREATE VIRTUAL TABLE</span> messages_fts_cjk <span class="kw">USING</span> fts5(
+  content, tool_name, tool_calls,
+  content=<span class="st">'messages_fts_cjk_src'</span>, content_rowid=<span class="st">'id'</span>,
+  tokenize=<span class="st">'cjk_unicode61'</span>);     <span class="cm"># ~/.hermes/lib/libfts5_cjk.so</span>
+<span class="cm">// cjk_unicode61 (~250 行零依赖 C 扩展): 包装 unicode61，
+//   CJK 连续段重切为重叠二元组（Lucene CJKAnalyzer 语义）
+//   → FTS5 短语语义下查询侧连续 bigram = ≥2 字精确子串匹配
+//   → 替代 trigram（trigram 要求 ≥3 字符: 1-2 字中文词退化 LIKE 全表扫，
+//     实测 3-6s/查询）
+// 加载失败自愈: drop cjk 触发器保写、索引转 stale，等 optimize-storage 重建</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · 三套全文索引</span>
+messages_fts          (unicode61)     <span class="c">// 英文/默认</span>
+messages_fts_trigram  (trigram)       <span class="c">// 前代方案, 对中文双字词失效</span>
+messages_fts_cjk      (自研 bigram)   <span class="c">// "连接池耗尽" → 切成 [连接 接池 池耗 耗尽 尽…]
+                                     <span class="c">// 查询"连接池" → 切 [连接 接池 池] → 短语匹配 = 子串命中</span>
+外部内容表 + 高水位 marker 触发器     <span class="c">// 增量索引, 不重扫全表</span>
+检索流: session_search 工具 → BM25 发现(含 parent/压缩/重置前史血缘解析)
+        → anchor 窗口滚动切片(无 FTS, 精确取上下文)</code></pre></div>
+<div class="beginner">中文检索坑：SQLite FTS5 默认分词把整句中文当一个词；trigram 又要求 ≥3 字符——「项目」「优化」这类双字词直接失效。Hermes 写了 ~250 行 C 扩展解决。你的 Agent 面向中文用户，<b>迟早踩这个坑</b>。</div>
+
+<h3 id="hm-mgr">4.5 MemoryManager：单 provider、后台写回、schema 归一化</h3>
+<div class="codeview cvtoggle"><input type="radio" name="cv42" id="cv42-s" checked><input type="radio" name="cv42" id="cv42-p"><div class="cv-bar"><span class="cv-title">agent/memory_manager.py:6-84, 564-639, 825-846 · 集成点</span><label for="cv42-s">源码</label><label for="cv42-p">伪代码</label></div><pre class="cv src"><code><span class="cm"># 单外部 provider 强制（第二个直接拒）:</span>
+<span class="st">"Only one external memory provider is allowed at a time.
+ Configure which one via memory.provider in config.yaml."</span>
+
+_PREFETCH_TIMEOUT = <span class="nu">8.0</span>                      <span class="cm"># s</span>
+<span class="cm"># prefetch: threading.Thread(daemon=True, name=f"memory-prefetch-{p.name}")</span>
+<span class="cm">#           .join(8.0) 超时放弃本轮并告警; 上个线程还活着则跳过</span>
+<span class="cm"># sync: DaemonThreadPoolExecutor(max_workers=1)</span>
+<span class="cm">#   动机注释: Hindsight daemon 阻塞 ~298s 曾把 agent 卡在 "running"</span>
+<span class="cm">#   单 worker 保证 turn N 写先于 N+1 落地</span>
+<span class="cm"># shutdown: 5s 有界排水, 统计 abandoned writes/prefetches</span>
+<span class="cm"># normalize_tool_schema: 处理双重包裹的 OpenAI tool 形状
+#   (DeepSeek 会整请求 400, #47707)</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · 一个 turn 里的 MemoryManager</span>
+轮前 prefetch_all(用户消息):
+    若 消息是寒暄("hi/ok/thanks"): 跳过        <span class="c">// is_trivial_prompt, 省一次调用</span>
+    对 provider in [builtin, 唯一的外部provider]:
+        若 外部: 后台线程跑 provider.prefetch(消息), 最多等 8 秒
+                 超时 → 放弃本轮(不阻塞主对话), 告警
+轮中: 注入 build_memory_context_block("&lt;memory-context&gt;" 围栏)
+      流式响应经 StreamingContextScrubber 跨 chunk 擦除敏感围栏
+轮后 sync_all(用户消息, 助手回复):
+    后台单线程队列: 镜像内置 MEMORY.md/USER.md 的写出到 provider
+    (顺序保证: turn N 的写必然先于 turn N+1 落地)
+关机: 等队列排空 ≤5s; 报告被放弃的写入数</code></pre></div>
+
+<h3 id="hm-provider">4.6 八大记忆 Provider（plugins/memory/）</h3>
+<table>
+<tr><th>Provider</th><th>类型</th><th>特点</th></tr>
+<tr><td><code>builtin</code></td><td>内置</td><td>MEMORY.md/USER.md 文件存储，第一个注册</td></tr>
+<tr><td><code>openviking</code></td><td>层级文件</td><td>L0/L1/L2 分层文件系统记忆</td></tr>
+<tr><td><code>honcho</code></td><td>用户建模</td><td>辩证式（dialectic）用户画像</td></tr>
+<tr><td><code>mem0</code></td><td>SaaS</td><td>两阶段抽取+ADD/UPDATE/DELETE 裁决（mem0.json + API key）</td></tr>
+<tr><td><code>hindsight</code></td><td>知识图谱</td><td>（有 daemon 阻塞 298s 的前科，见 4.5）</td></tr>
+<tr><td><code>holographic</code></td><td>本地</td><td>SQLite/FTS5 + HRR 代数 + 信任打分</td></tr>
+<tr><td><code>retaindb</code></td><td>本地库</td><td>—</td></tr>
+<tr><td><code>byterover</code> / <code>supermemory</code></td><td>外部服务</td><td>byterover 本地目录；supermemory 容器化（base_url/container_tag/search_mode）</td></tr>
+</table>
+<p><b>协议</b>（memory_provider.py）：<code>initialize / system_prompt_block / prefetch / queue_prefetch / recall_status / sync_turn / get_tool_schemas / handle_tool_call / shutdown</code> + 钩子 <code>on_turn_start / on_session_end / on_session_switch / on_pre_compress / on_memory_write / on_delegation / get_config_schema / save_config / backup_paths</code>。<code>PRE_COMPRESS_CHECKPOINT_API_VERSION = 2</code>：v1=历史隐式契约（best-effort 传原始消息列表）；v2=opt-in fail-closed——<code>on_pre_compress(require_checkpoint=True)</code> 失败时异常上抛，<b>保留未压缩 transcript 而不是丢数据</b>。</p>
+<div class="beginner">「只允许一个外部 provider」是反直觉但正确的决定：多 provider = 多套工具 schema（浪费上下文）+ 写回顺序不定（一致性噩梦）。<b>约束有时就是特性</b>。</div>
+
+<h3 id="hm-loop">4.7 学习回路：nudge → 缓存对等 fork → 审批门</h3>
+<div class="codeview cvtoggle"><input type="radio" name="cv43" id="cv43-s" checked><input type="radio" name="cv43" id="cv43-p"><div class="cv-bar"><span class="cv-title">agent/background_review.py:465-475, 1102-1252 · 缓存对等 fork</span><label for="cv43-s">源码</label><label for="cv43-p">伪代码</label></div><pre class="cv src"><code><span class="cm"># review 提示:</span>
+<span class="st">"Review the conversation above and consider saving to memory if appropriate.
+ … If something stands out, save it using the memory tool. If nothing is
+ worth saving, just say 'Nothing to save.'"</span>
+
+<span class="cm"># build_cache_parity_fork:</span>
+<span class="cm">#   detached AIAgent fork —— 继承父凭据</span>
+<span class="cm">#   _fork_kwargs["ephemeral_system_prompt"]: byte-identical system prompt</span>
+<span class="cm">#   同 session_id → fork 首请求 = 全量回放快照 = 廉价 cache read</span>
+<span class="cm">#   fork 内 _memory_nudge_interval = 0（防递归）</span>
+<span class="cm">#   主对话与主缓存永不被触碰（模块头 5-11）</span>
+<span class="cm"># 主对话 nudge: 每 _memory_nudge_interval(默认10) 轮注入提醒;
+#   模型实际调用 memory 工具即重置计数(tool_executor.py:709)</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码</span>
+每轮结束后:
+    turns_since_memory += 1
+    若 turns_since_memory ≥ 10 且 memory 工具可用:
+        下一轮注入提醒("考虑把值得记的东西存进记忆")
+模型调用 memory 工具 → turns_since_memory = 0
+后台审阅(每轮条件触发):
+    fork = 派生(继承凭据, system_prompt 与主对话<b>逐字节相同</b>, 同 session_id)
+    <span class="c">// 关键: fork 的第一次请求 = 主对话的缓存重放 → 几乎免费</span>
+    fork.运行("回顾以上对话, 值得保存就用 memory 工具保存; 没有就说 Nothing to save.")
+    fork 内禁用 nudge(防套娃)
+若 memory.write_approval = true:
+    所有写入先暂存(pending_id) → 用户 /memory approve 后重放落盘
+    暂存写入不镜像到外部 provider</code></pre></div>
+
+<h3 id="hm-schema">4.8 state.db Schema（hermes_state_common.py）</h3>
+<div class="card filetree"><span class="cm"># ~/.hermes/state.db（会话/消息库）</span>
+messages (id PK AUTOINCREMENT, session_id, role, content, tool_calls, tool_name,
+          timestamp, token_count, reasoning, active, compacted, _compressed_summary)
+sessions (…, parent_session_id 血缘, system_prompt_hash FK)
+session_model_usage (计量)
+messages_fts (unicode61) · messages_fts_trigram · messages_fts_cjk
+  <span class="c"># 三套 external-content FTS5 + 高水位 marker 触发器（增量索引）</span></div>
+
+<h3 id="hm-compact">4.9 压缩与检查点</h3>
+<p><code>archive_and_compact</code>（hermes_state.py:11099, 11819-11820）：被压缩行标记 <code>compacted=1</code>（仍可被 session_search 发现）；<b>水位保证</b>——慢速摘要调用期间新到的行不会被摘要掉（记录水位，只压水位之前的）。provider 侧的 v2 检查点契约见 4.6。<b>Hermes 的原则：压缩丢的是「上下文可见性」，永不丢「数据库可检索性」。</b></p>
+
+<div class="pagebreak" data-label="—— 第五部分 ——"></div>
+
+<!-- ================================================================ -->
+<h2>第五部分 · dsh：内核只保事实，记忆即插件</h2>
+<p>仓库 <a class="src" href="https://github.com/deepseek-ai/deepseek-harness">deepseek-ai/deepseek-harness</a>（TypeScript/pnpm monorepo + Cordis 微内核，"everything-is-a-plugin"）。dsh 的立场：内核不猜你要什么记忆，只保证两条<b>事实性不变量</b>——①模型见过的每个 token 都被持久化；②指令注入永远缓存友好。语义记忆是插件的事。</p>
+
+<h3 id="dsh-discover">5.1 指令发现（packages/context/agent-instructions）</h3>
+<div class="codeview cvtoggle"><input type="radio" name="cv44" id="cv44-s" checked><input type="radio" name="cv44" id="cv44-p"><div class="cv-bar"><span class="cv-title">src/config.ts:11-14 · src/files.ts:182-307 · 发现算法</span><label for="cv44-s">源码</label><label for="cv44-p">伪代码</label></div><pre class="cv src"><code>DEFAULT_PROJECT_ROOT_MARKERS = [<span class="st">'.git'</span>]
+DEFAULT_INSTRUCTION_FILE_CANDIDATES = [<span class="st">'AGENTS.md'</span>, <span class="st">'CLAUDE.md'</span>]
+DEFAULT_LOCAL_INSTRUCTION_FILE_CANDIDATES = [<span class="st">'AGENTS.local.md'</span>, <span class="st">'CLAUDE.local.md'</span>]
+DEFAULT_MAX_SOURCE_BYTES = <span class="nu">1_048_576</span>
+<span class="cm">// 候选名过滤掉含路径分隔符的值（config.ts:119-123，防 ../ 逃逸）</span>
+
+<span class="cm">// 定根: cwd 向上找第一个含 marker 的目录，找不到回退 cwd</span>
+<span class="kw">let</span> current = resolve(cwd)
+<span class="kw">for</span> (;;) {
+  <span class="kw">for</span> (<span class="kw">const</span> marker <span class="kw">of</span> markers)
+    <span class="kw">if</span> (<span class="kw">await</span> existsAsMarker(join(current, marker))) <span class="kw">return</span> current
+  <span class="kw">const</span> parent = dirname(current)
+  <span class="kw">if</span> (parent === current) <span class="kw">return</span> resolve(cwd)
+  current = parent
+}
+<span class="cm">// 加载: $DSH_HOME/AGENTS.md(全局) → 根→cwd 每目录(先 base 后 local)</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码</span>
+函数 发现指令文件(cwd, 配置):
+    过滤配置.候选文件名: 丢弃含 "/" 或 "\\" 的   <span class="c">// 防路径注入</span>
+    全局 = ~/.dsh/AGENTS.md (固定, 无本地叠加)
+    项目根 = 从 cwd 向上找第一个含 .git 的目录 (找不到 = cwd)
+    链 = [项目根 → … → cwd]                      <span class="c">// 广到窄</span>
+    结果 = [全局]
+    对 dir in 链:
+        对 组 in [[AGENTS.md, CLAUDE.md], [AGENTS.local.md, CLAUDE.local.md]]:
+            对 文件 in 组: 若存在(且真实文件非目录): 结果.追加(有界读取(文件, ≤1MiB))
+    返回 结果</code></pre></div>
+
+<h3 id="dsh-render">5.2 渲染：基线消息、预算阶梯、去重、转义</h3>
+<div class="codeview cvtoggle"><input type="radio" name="cv45" id="cv45-s" checked><input type="radio" name="cv45" id="cv45-p"><div class="cv-bar"><span class="cv-title">src/render.ts:10-315 · 预算阶梯与转义</span><label for="cv45-s">源码</label><label for="cv45-p">伪代码</label></div><pre class="cv src"><code>SYSTEM_REMINDER_OPEN = <span class="st">'&lt;system-reminder&gt;'</span>
+<span class="cm">// escapeInstructionFrameBody:</span>
+body.replaceAll(SYSTEM_REMINDER_CLOSE, <span class="st">'&lt;\\/system-reminder&gt;'</span>)
+<span class="cm">// → 仓库控制的指令文本无法闭合插件自有框架（防逃逸）</span>
+
+<span class="cm">// 预算阶梯 (maxBytes: 65536 来自 cordis.patch.yml):</span>
+<span class="cm">// ① 完整渲染 → ② 超限则从最宽文件开始逐个 omit（保最 specific）
+//   → ③ 最 specific 文件二分截断（UTF-8 码点安全 truncateToFit）
+//   → ④ 兜底只输出预算通知行</span>
+
+<span class="cm">// SHA-1 去重:</span>
+<span class="kw">export function</span> instructionContentSha1(content: <span class="nu">string</span>) {
+  <span class="kw">return</span> createHash(<span class="st">'sha1'</span>).update(content).digest(<span class="st">'hex'</span>) }
+trimmedInstructionDigest = sha1(content.trim())     <span class="cm">// 同目录去重; 跨目录永不合并</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · 基线消息的生成</span>
+函数 渲染基线(文件列表, 预算=65536字节):
+    对 每个文件: 内容 = 有界流式读取(≤1MiB, 按字节累计强制)
+    同目录去重: trimmed 内容 SHA-1 相同的后续文件丢弃
+        <span class="c">// (CLAUDE.md 是 AGENTS.md 的 symlink/拷贝 → 只留一个)</span>
+    正文 = ""
+    对 文件(从最宽到最具体): 正文 += "Instructions from: {路径}\n{内容}\n\n"
+    对 内容中的每个 "&lt;/system-reminder&gt;": 替换为 "&lt;\\/system-reminder&gt;"   <span class="c">// 防逃逸</span>
+    若 字节数(正文) &gt; 预算:
+        从最宽的文件开始逐个整体丢弃, 直到放得下(保最具体的)
+        还不行: 对最具体文件做码点安全的二分截断
+        还不行: 只输出 "指令超预算被省略" 通知行
+    返回 "&lt;system-reminder&gt;\n{intro}\n{正文}\n&lt;/system-reminder&gt;"  <span class="c">// 一次性的 durable user 消息</span></code></pre></div>
+
+<h3 id="dsh-refresh">5.3 append-only 刷新：缓存友好的增量对账</h3>
+<div class="codeview cvtoggle"><input type="radio" name="cv46" id="cv46-s" checked><input type="radio" name="cv46" id="cv46-p"><div class="cv-bar"><span class="cv-title">src/index.ts:73-357 · src/state.ts · touch 与对账</span><label for="cv46-s">源码</label><label for="cv46-p">伪代码</label></div><pre class="cv src"><code>FILE_TOUCH_TOOL_NAMES = <span class="kw">new</span> <span class="fn">Set</span>([<span class="st">'read'</span>, <span class="st">'write'</span>, <span class="st">'edit'</span>])
+ctx.on(<span class="st">'tools/result'</span>, (exec, result) =&gt; {
+  <span class="kw">if</span> (!result.isError &amp;&amp; exec.agent !== undefined &amp;&amp; !exec.signal.aborted) {
+    <span class="kw">const</span> ownPath = filePathFromExecution(exec)
+    <span class="kw">if</span> (ownPath !== undefined) touches.push({ agent: exec.agent, path: ownPath })
+  }
+})
+<span class="cm">// descendantDirsBetween(cwd, touchedPath): cwd 与被触文件之间所有目录入对账</span>
+<span class="cm">// 消息文案:</span>
+<span class="cm">//   新文件: "Additional instructions from: ${path}"</span>
+<span class="cm">//   变更:   "Updated instructions from: ${path}
+//            This file changed after it was loaded. Use the following content
+//            instead of the previously loaded instructions from this file."</span>
+<span class="cm">//   移除:   "Instructions removed: ${path}"</span>
+<span class="cm">// InstructionVersionState(path, version, digest, trimmedDigest):
+//   digest 未变 → 跳过重读; "An unchanged path with an unchanged digest
+//   is never injected again"</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码</span>
+注册 工具结果钩子:
+    若 工具∈{read,write,edit} 且 成功(非error, 未abort) 且 是第一方:
+        记录 touch(路径)
+下轮请求前:
+    新目录 = cwd 到 touch 路径之间的所有中间目录
+    对 每个新目录: 找该目录的 AGENTS.md/CLAUDE.md
+        文件从未注入过 → 尾部追加 "Additional instructions from: {路径}\n{内容}"
+    对 已注入的文件: 重算 SHA-1
+        变了 → 尾部追加 "Updated instructions from: {路径}\n{新内容}
+                        （以本次内容为准）"
+        没变 → 什么都不做(绝不重复注入)
+        消失了 → "Instructions removed: {路径}"
+<span class="cm">// 全程 append-only: 已注入的旧内容仍在历史里, 新消息声明覆盖;
+// 前缀一个字节都不改 → KV cache 完整保留</span></code></pre></div>
+<div class="beginner">对比三家「指令变更」策略：Claude Code 压缩后清缓存强制重载（付缓存损失换新鲜度）；dsh 只 append 声明式覆盖（零损失，旧版还在上文）；Hermes 冻结到下会话（零损失零新鲜度）。<b>没有唯一正确答案，只有你愿意付什么代价</b>。</div>
+
+<h3 id="dsh-jsonl">5.4 会话日志：zstd 校验帧 JSONL 与崩溃恢复</h3>
+<div class="codeview cvtoggle"><input type="radio" name="cv47" id="cv47-s" checked><input type="radio" name="cv47" id="cv47-p"><div class="cv-bar"><span class="cv-title">session-persistence-jsonl/src/{format,zstd,index}.ts · 日志格式</span><label for="cv47-s">源码</label><label for="cv47-p">伪代码</label></div><pre class="cv src"><code><span class="cm">// 磁盘: &lt;root&gt;/--&lt;normalized-cwd&gt;/&lt;encodeSegment(id)&gt;/session.jsonl.zstd</span>
+<span class="cm">// encodeSegment: '.'→~002E、'..'→~002E~002E （SessionId 是未校验 branded
+//   string → 主动防路径穿越）</span>
+<span class="kw">interface</span> HeaderLine {          <span class="cm">// 首帧必须恰好是这一行</span>
+  type: <span class="st">'session'</span>; version: <span class="nu">number</span>; id: SessionId; createdAt: <span class="nu">number</span>;
+  cwd?: <span class="nu">string</span>; parentSession?: SessionId; seedLength?: <span class="nu">number</span>;
+  origin?: <span class="st">'subagent'</span>; delegationDepth: <span class="nu">number</span>; agentPreset?: <span class="nu">string</span> }
+<span class="cm">// 版本不符: 解析任何事件之前就抛 SessionFormatUnsupportedError
+//   ("upgrade the harness", never "corrupt session log")</span>
+
+CHECKSUM_OPTIONS = { params: { ZSTD_c_checksumFlag: <span class="nu">1</span> } }   <span class="cm">// 每帧强制校验和</span>
+<span class="cm">// packChunks: 连续 delta 事件打包成 text/reasoning/tool-call-chunks 存储
+//   行（无损，日志小 ~60%）+ sourceEventSeqs 区间编码</span>
+<span class="cm">// 崩溃安全: temp + fsync + link()/unlink() 原子发布(POSIX);
+//   append 失败回滚 truncate 防重复 seq</span>
+<span class="cm">// 配置: root(必填) · packChunks=true · preparedSessionCacheSize=5
+//   · writeBatchMaxDelayMs=200 ("fixed live-event coalescing window")</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · 崩溃恢复流程</span>
+启动时 扫描日志文件:
+    按字节找换行 / 按 zstd magic (0xFD2FB528) + 帧头定位完整帧
+    校验: seq 必须连续; 无换行的尾巴 = torn tail
+    对 每个 torn 帧:
+        用 ZSTD_e_flush 尽力解出帧内<b>完整</b>的 JSONL 记录 → recoveredEvents
+        找到安全截断偏移 → commitRepair 截断文件
+    首帧必须是且只能是 header; 版本不支持 → 抛"请升级 dsh"而非"日志损坏"
+写入时:
+    每事件追加一行（或打包成 chunks 行）
+    批量合窗 200ms; 材料化走 临时文件+fsync+原子link
+    失败 → 回滚 truncate 到原大小（防 seq 重复）
+<span class="cm">// 设计宣言: "any token the model ever sees is persisted to the session log"
+//   UI/resume/fork/遥测/回放全部派生自这一条日志</span></code></pre></div>
+
+<h3 id="dsh-compact">5.5 Compaction 家族：压缩也是 durable 事件</h3>
+<div class="codeview cvtoggle"><input type="radio" name="cv48" id="cv48-s" checked><input type="radio" name="cv48" id="cv48-p"><div class="cv-bar"><span class="cv-title">packages/compaction/* · 事件协议</span><label for="cv48-s">源码</label><label for="cv48-p">伪代码</label></div><pre class="cv src"><code><span class="kw">export abstract class</span> CompactionEngine <span class="kw">extends</span> Service {
+  <span class="fn">constructor</span>(ctx: Context) { <span class="kw">super</span>(ctx, <span class="st">'compaction'</span>) }
+  <span class="kw">abstract</span> <span class="fn">compactIfNeeded</span>(agent, trigger: <span class="st">'pressure'</span> | <span class="st">'context-overflow'</span>,
+    signal: AbortSignal): Promise&lt;CompactionResult | null&gt;
+}
+<span class="cm">// 四包: compaction(契约) · compaction-basic(tokenMeter+summarizeWithLlm)
+//       · compaction-tool-result-pruner · command-compact(/compact)</span>
+<span class="cm">// durable 事件对: compaction/start + compaction/end
+//   → 互斥锁 + 事务边界; summary 替换消息带 compactCheckpointSource 事务身份</span>
+<span class="cm">// 手动 /compact 经 runMaintenance 与运行中的 turn 串行化</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码</span>
+函数 压缩(agent, 触发=压力|上下文溢出):
+    日志.追加(事件 "compaction/start" {事务id})      <span class="c">// durable 互斥锁</span>
+    在 session surface(投影视图)上:
+        用 tokenMeter 找到可压的历史区间
+        先经 tool-result-pruner 裁超大工具输出
+        summarizeWithLlm 生成摘要节点替换该区间
+    日志.追加(事件 "compaction/end" {事务id, 摘要身份})
+    <span class="c">// 关键: 日志文件本身一字未改——压缩只是又追加了两个事件;
+    //      回放时按事件重建 surface, 任何时刻的模型可见状态可精确复现</span></code></pre></div>
+
+<h3 id="dsh-plugin">5.6 第三方记忆插件的五个接入缝</h3>
+<table>
+<tr><th>缝</th><th>机制</th><th>适用</th></tr>
+<tr><td>Cordis 插件模型</td><td><code>apply(ctx, config)</code> + <code>inject</code> 服务数组，bundle 经 <code>cordis.patch.yml</code> 装载</td><td>任何插件</td></tr>
+<tr><td>事件钩子</td><td><code>ctx.on('session/event' | 'agent/pre-step' | 'tools/result')</code></td><td>观察会话与工具活动（agent-instructions 就挂在 tools/result）</td></tr>
+<tr><td>类型化消息 source</td><td>declaration merging 扩展 <code>MessageSourceMap</code> 注册自有 source kind</td><td>注入记忆并获得 durable/replay/compact 语义</td></tr>
+<tr><td>Service Definition</td><td><code>ctx.compaction</code>/<code>ctx.tokenMeter</code>/<code>ctx.fs</code> 等可替换服务</td><td>替换引擎（如自定义压缩器）</td></tr>
+<tr><td>PersistenceBackend</td><td>实现接口 + <code>readRaw</code> 逐字 JSONL 工件</td><td>自定义存储/外部归档</td></tr>
+</table>
+<pre><code><span class="cm">// 最省事的第三方记忆路径（官方示范）:</span>
+<span class="kw">export const</span> inject = [<span class="st">'sessionProjections'</span>]
+<span class="fn">apply</span>(ctx) {
+  ctx.on(<span class="st">'tools/result'</span>, ...)        <span class="cm">// 观察</span>
+  ctx.on(<span class="st">'agent/pre-step'</span>, ...)       <span class="cm">// 把检索结果折叠进 claimed batch</span>
+}
+<span class="kw">declare module</span> <span class="st">'@deepseek-ai/dsh-llm'</span> {
+  <span class="kw">interface</span> MessageSourceMap { <span class="st">'my-memory'</span>: MyMemorySource } }</code></pre>
+
+<h3 id="dsh-preset">5.7 预设与配置分层</h3>
+<div class="flow"><span class="step">profile manifests</span><span class="arrow">→</span><span class="step">仓库 cordis.patch.yml</span><span class="arrow">→</span><span class="step">$DSH_HOME/cordis.patch.yml</span><span class="arrow">→</span><span class="step">--patch CLI 覆盖</span></div>
+<p>官方预设 <code>config/agent-presets/&lt;id&gt;/preset.yml</code>：<code>standard / code / minimal / cordis</code>——「记忆相关组件开哪些」由预设决定（如 minimal 可能去掉 agent-instructions），再次体现「记忆是装配选项而非内核功能」。生态插件：<code>dsh-mnemon</code>（三层、九种长期 provider）、<a class="src" href="https://github.com/zilliztech/memsearch">zilliztech/memsearch</a>（Markdown+Milvus，兼容 Claude Code/Codex/DSH）、rohitg00/agentmemory、Hindsight/OpenViking DSH bundle。</p>
+
+<div class="pagebreak" data-label="—— 第六部分 ——"></div>
+
+<!-- ================================================================ -->
+<h2 id="others">第六部分 · 参照系：其他主流实现速览</h2>
+<table>
+<tr><th>Agent</th><th>记忆载体</th><th>注入</th><th>独有特色</th></tr>
+<tr><td><b>OpenAI Codex CLI</b></td><td><code>~/.codex/AGENTS.md</code> + 仓库树各层 AGENTS.md</td><td>启动合并注入，深文件更优先</td><td>无检索；<code>~/.codex/sessions/</code> JSONL rollout 支持 resume</td></tr>
+<tr><td><b>Cursor</b></td><td><code>.cursor/rules/*.mdc</code>（frontmatter）+ 自动 memories</td><td>激活规则前置；Team&gt;Project&gt;User</td><td>四种触发：alwaysApply / globs 自动附加 / <b>description 由模型按需拉取</b> / @手动</td></tr>
+<tr><td><b>Gemini CLI</b></td><td>GEMINI.md 层级 + <code>@import</code>（文件名可配 <code>context.fileName</code>）</td><td>每条 prompt 携带拼接结果</td><td><b>JIT 加载</b>：工具触到目录时重扫该目录至信任根；shadow-git checkpoint + <code>/restore</code> 连对话一起回滚</td></tr>
+<tr><td><b>opencode / Crush</b></td><td>AGENTS.md（含 CLAUDE.md 回退）/ CRUSH.md</td><td>启动合并</td><td>opencode <code>instructions</code> 支持 glob 与远程 URL；Crush 全局上下文可扩展路径</td></tr>
+<tr><td><b>Letta (MemGPT)</b></td><td>memory blocks（字符串块，可跨 agent 共享）</td><td>块 pin 在 system prompt</td><td>agent 自编辑块 + 向量 archival 库；Postgres 全史永久保存，可穿越压缩</td></tr>
+<tr><td><b>mem0</b></td><td>向量库事实 + Neo4j 图记忆</td><td>按 query 注入</td><td><code>add()</code> 两阶段 LLM：抽取候选 → 对现有记忆裁决 <b>ADD/UPDATE/DELETE/NOOP</b>（非盲追加）；按 user/agent/run id 作用域；支持过期时间</td></tr>
+</table>
+
+<h3>6.1 三个最有借鉴价值的参照实现</h3>
+<div class="grid">
+<div class="codeview cvtoggle"><input type="radio" name="cv49" id="cv49-s" checked><input type="radio" name="cv49" id="cv49-p"><div class="cv-bar"><span class="cv-title">Cursor · .mdc 规则文件格式</span><label for="cv49-s">源码</label><label for="cv49-p">伪代码</label></div><pre class="cv src"><code><span class="cm"># .cursor/rules/vue-testing.mdc</span>
+---
+description: Vue 组件测试规范
+globs: ["src/components/**/*.vue"]
+alwaysApply: false
+---
+所有 Vue 组件测试用 @vue/test-utils；异步逻辑必须 fakeAsync…
+
+<span class="cm">// 触发矩阵:
+//   alwaysApply: true      → 永远注入
+//   只有 globs              → 读到匹配文件时自动附加
+//   只有 description        → Agent Requested: 模型看描述自己决定拉取
+//   两者都无                → Manual: 用户 @ruleName 手动引用</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码 · Cursor 的四种规则触发</span>
+规则 = { 描述, glob模式, 是否总是应用, 正文 }
+启动: 注入所有 alwaysApply 规则 + 所有规则的"描述清单"
+读文件 F 时: 注入 glob 命中 F 的规则
+模型觉得需要时: 按描述主动 Read 对应规则     <span class="c">// 唯一的"模型驱动召回"</span>
+用户 @规则名: 手动注入
+冲突优先级: Team &gt; Project &gt; User</code></pre></div>
+
+<div class="codeview cvtoggle"><input type="radio" name="cv50" id="cv50-s" checked><input type="radio" name="cv50" id="cv50-p"><div class="cv-bar"><span class="cv-title">mem0 · 两阶段写入裁决</span><label for="cv50-s">源码</label><label for="cv50-p">伪代码</label></div><pre class="cv src"><code><span class="cm"># mem0 add() 的两阶段流水线:</span>
+result = m.add(
+  messages=[<span class="st">"我用的是 pnpm，别再给我 npm 命令了"</span>],
+  user_id=<span class="st">"alice"</span>, run_id=<span class="st">"session-42"</span>,
+  expiration_date=<span class="st">"2026-12-31"</span>,   <span class="cm"># 可选：过期自动失效</span>
+)
+<span class="cm"># 阶段1 (抽取): LLM 从消息提取候选事实
+#   → "用户包管理器是 pnpm"
+# 阶段2 (更新裁决): 对向量库中既有记忆逐条判断
+#   → ADD(全新) / UPDATE(修正旧值) / DELETE(被推翻) / NOOP
+# 检索: search() 嵌入查询 → 向量近邻 (+图遍历) → 可选 LLM 重排
+# 平台按 user/agent/run id 自动召回前几轮(解决代词指代)</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码</span>
+函数 写入记忆(对话片段, 作用域):
+    候选事实 = LLM("从这段对话提取值得长期记住的事实")
+    对 每条候选:
+        相似旧记忆 = 向量检索(候选, topK, 限定作用域)
+        裁决 = LLM("对比候选与旧记忆: 该 ADD 新增 / UPDATE 修正 /
+                     DELETE 删除被推翻的 / NOOP 不动")
+        执行裁决（默认平台版是 additive，开源版可配）
+    <span class="c">// 与 OpenClaw dreaming 的区别: mem0 在写入时裁决(在线),
+    //                      OpenClaw 在巩固时裁决(离线+召回信号门控)</span></code></pre></div>
+</div>
+<div class="beginner">把参照系和四大主角连起来：Codex/Gemini/opencode ≈ Claude Code 的 CLAUDE.md 子集；Cursor 的 description 触发 ≈ 简化版「按需召回」；mem0 两阶段裁决 ≈ OpenClaw dreaming 的通用 SaaS 版；Letta 的 memory blocks ≈ Hermes 有界记忆的泛化。<b>行业正收敛到同一组原语</b>：指令文件层级 + 有界记忆块 + 后台巩固 + 混合检索。</div>
+
+<div class="pagebreak" data-label="—— 第七部分 ——"></div>
+
+<!-- ================================================================ -->
+<h2 id="diy">第七部分 · 动手实践：从零写一个记忆系统</h2>
+
+<h3>7.1 分阶段路线图（Lv1 → Lv7）</h3>
+<table>
+<tr><th>阶段</th><th>做什么</th><th>借鉴</th><th>不要做</th></tr>
+<tr><td><b>Lv1 · 指令文件</b></td><td>项目根 AGENTS.md + 用户全局 <code>~/.agent/AGENTS.md</code>，启动拼接为首条 meta user 消息（<code>&lt;project-instructions&gt;</code> 包裹）</td><td>Claude Code claudemd.ts</td><td>不塞 system prompt 常量；不每轮重读</td></tr>
+<tr><td><b>Lv2 · 记忆文件</b></td><td><code>~/.agent/memory/</code>：每条一个 md（frontmatter: name/description/type），MEMORY.md 索引每行 ≤150 字符；<b>不可变</b>：更新=删旧建新</td><td>Claude Code memdir</td><td>不越写越大；不存可推导内容</td></tr>
+<tr><td><b>Lv3 · 召回</b></td><td>&lt;200 条：小模型读清单选 ≤5（json_schema 输出）；&gt;200 条：SQLite FTS5（中文需 CJK 二元组分词）</td><td>CC findRelevantMemories / Hermes</td><td>别一上来就向量库；召回要设预算（会话累计 ≤60KB）</td></tr>
+<tr><td><b>Lv4 · 后台写入</b></td><td>轮后 fork 抽取（maxTurns≤5，工具沙箱只写记忆目录）；主对话写过则跳过</td><td>CC extractMemories</td><td>别在主对话顺手存（污染上下文+缓存）</td></tr>
+<tr><td><b>Lv5 · 巩固</b></td><td>每日 cron：fork（≤20 轮）合并同类、删被证伪、重建索引；锁文件+PID 检测防并发；<b>校验失败回退 append-only</b></td><td>CC autoDream / OC dreaming</td><td>别让巩固子代理不可恢复地改写</td></tr>
+<tr><td><b>Lv6 · 信任分级</b></td><td>每条记忆记 origin（owner/agent/untrusted）；untrusted 永不自动注入；支持按来源删除（墓碑）</td><td>OC provenance</td><td>别信外部导入自带的元数据</td></tr>
+<tr><td><b>Lv7 · 混合检索</b></td><td>向量(0.7)+BM25(0.3)，精确指名独占 tier，30 天衰减做成 opt-in，重要度乘子 ≤1.25</td><td>OC hybrid.ts</td><td>别让任何单一信号主导排序</td></tr>
+</table>
+
+<h3>7.2 关键代码骨架</h3>
+<div class="codeview cvtoggle"><input type="radio" name="cv51" id="cv51-s" checked><input type="radio" name="cv51" id="cv51-p"><div class="cv-bar"><span class="cv-title">Lv3 · 召回选择器（可直接改写使用）</span><label for="cv51-s">源码</label><label for="cv51-p">伪代码</label></div><pre class="cv src"><code><span class="kw">import</span> pathlib, json, time
+
+MAX_MEMORY_FILES, FRONTMATTER_LINES = <span class="nu">200</span>, <span class="nu">30</span>
+MAX_LINES_PER_MEM, MAX_BYTES_PER_MEM, MAX_SESSION_BYTES = <span class="nu">200</span>, <span class="nu">4096</span>, <span class="nu">60</span>*<span class="nu">1024</span>
+
+<span class="kw">def</span> <span class="fn">scan_manifest</span>(mem_dir: pathlib.Path) -&gt; list[dict]:
+    files = [f <span class="kw">for</span> f <span class="kw">in</span> mem_dir.glob(<span class="st">"*.md"</span>) <span class="kw">if</span> f.name != <span class="st">"MEMORY.md"</span>]
+    files.sort(key=<span class="kw">lambda</span> f: f.stat().st_mtime, reverse=<span class="bu">True</span>)   <span class="cm"># 新→旧</span>
+    manifest = []
+    <span class="kw">for</span> f <span class="kw">in</span> files[:MAX_MEMORY_FILES]:
+        fm = <span class="st">""</span>.join(f.read_text(encoding=<span class="st">"utf-8"</span>).splitlines()[:FRONTMATTER_LINES])
+        manifest.append(parse_frontmatter(fm))       <span class="cm"># {name, description, type}</span>
+    <span class="kw">return</span> manifest
+
+<span class="kw">def</span> <span class="fn">recall</span>(query: <span class="bu">str</span>, mem_dir) -&gt; <span class="bu">str</span>:
+    out = side_query(                                  <span class="cm"># 便宜快速的小模型</span>
+        system=<span class="st">"Select up to 5 memories relevant to the query. "</span>
+               <span class="st">"If unsure, don't select. Tool how-to docs: skip. "</span>
+               <span class="st">"Pitfalls and warnings: select."</span>,
+        user=<span class="st">f"Query: {query}\n\nAvailable memories:\n"</span>
+             <span class="st">f"{json.dumps(scan_manifest(mem_dir), ensure_ascii=False)}"</span>,
+        response_schema={<span class="st">"selected_memories"</span>: [<span class="bu">str</span>]}, max_tokens=<span class="nu">256</span>)
+    parts, used = [], <span class="nu">0</span>
+    <span class="kw">for</span> name <span class="kw">in</span> out[<span class="st">"selected_memories"</span>]:
+        p = mem_dir / (name + <span class="st">".md"</span>)
+        <span class="kw">if not</span> p.exists(): <span class="kw">continue</span>
+        text = <span class="st">"\n"</span>.join(p.read_text(encoding=<span class="st">"utf-8"</span>).splitlines()[:MAX_LINES_PER_MEM])
+        text = text.encode()[:MAX_BYTES_PER_MEM].decode(<span class="st">"utf-8"</span>, <span class="st">"ignore"</span>)
+        age = <span class="bu">int</span>((time.time() - p.stat().st_mtime) // <span class="nu">86400</span>)
+        head = freshness(age, p)                        <span class="cm"># "14 days old…" 警告</span>
+        <span class="kw">if</span> used + len(text) &gt; MAX_SESSION_BYTES: <span class="kw">break</span>
+        parts.append(<span class="st">f"{head}\n{text}"</span>); used += len(text)
+    <span class="kw">return</span> <span class="st">"&lt;system-reminder&gt;\n"</span> + <span class="st">"\n\n"</span>.join(parts) + <span class="st">"\n&lt;/system-reminder&gt;"</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码（见 2.7 节流程图，此处为工程要点）</span>
+清单 = 前200个文件的前30行frontmatter（按mtime新→旧）
+选择 = 小模型(强制JSON) 从清单选 ≤5
+注入 = 每条截 200行/4KB + 新鲜度header + 会话累计 ≤60KB
+关键工程点:
+  ① 文件可能已被删除 → 注入前 exists() 校验
+  ② 按字节截断后要 decode("ignore") 修复半个多字节字符
+  ③ header 用"创建时的快照"生成 → 同会话字节稳定（缓存）
+  ④ 空选择返回空串, 不要注入空的 system-reminder</code></pre></div>
+
+<div class="codeview cvtoggle"><input type="radio" name="cv52" id="cv52-s" checked><input type="radio" name="cv52" id="cv52-p"><div class="cv-bar"><span class="cv-title">Lv4 · 后台抽取 + Lv6 溯源（骨架）</span><label for="cv52-s">源码</label><label for="cv52-p">伪代码</label></div><pre class="cv src"><code>EXTRACT_PROMPT = <span class="st">"""You are a memory extraction agent. Use ONLY the recent
+messages provided. No grepping source files, no git commands.
+Turn 1: read the existing memory manifest (provided below).
+Turn 2: write new single-fact memories with Write; delete stale ones.
+Never edit in place. Facts already covered: skip. Nothing worth
+saving: say 'Nothing to save'."""</span>
+
+<span class="kw">def</span> <span class="fn">sandbox</span>(tool, args, mem_dir):
+    <span class="kw">if</span> tool <span class="kw">in</span> (<span class="st">"Read"</span>, <span class="st">"Grep"</span>, <span class="st">"Glob"</span>): <span class="kw">return</span> allow()
+    <span class="kw">if</span> tool == <span class="st">"Bash"</span> <span class="kw">and</span> is_readonly(args): <span class="kw">return</span> allow()
+    <span class="kw">if</span> tool <span class="kw">in</span> (<span class="st">"Write"</span>, <span class="st">"Edit"</span>) <span class="kw">and</span> within(args[<span class="st">"path"</span>], mem_dir):
+        <span class="kw">return</span> allow_with_origin(<span class="st">"agent"</span>)          <span class="cm"># 写入即打溯源标签</span>
+    <span class="kw">return</span> deny(report=<span class="st">"tengu_like_telemetry"</span>)
+
+<span class="kw">def</span> <span class="fn">after_turn</span>(transcript, last_cursor):
+    <span class="kw">if</span> main_agent_wrote_memory_since(last_cursor):
+        <span class="kw">return</span> advance(last_cursor)                  <span class="cm"># 主对话写了就别抢</span>
+    <span class="kw">if not</span> has_user_prose_since(last_cursor):
+        <span class="kw">return</span> last_cursor
+    ok = run_forked(EXTRACT_PROMPT, can_use_tool=sandbox, max_turns=<span class="nu">5</span>)
+    <span class="kw">return</span> advance(last_cursor) <span class="kw">if</span> ok <span class="kw">else</span> last_cursor   <span class="cm"># 失败不推进游标</span></code></pre><pre class="cv pseudo"><code><span class="cm">// 伪代码</span>
+每轮结束后:
+    若 主对话已写记忆: 只推进游标
+    若 没有新用户文本: 返回            <span class="c">// "no user prose since last extraction"</span>
+    fork(提示=只用最近对话, 工具=沙箱(读类放行/写类仅记忆目录), 最大5轮)
+    每次经沙箱的写入都带 origin=agent 标签入库
+    成功 → 推进游标 + 插系统消息"memory_saved"
+    失败 → 不推进(下轮重试), 但连续失败要退避
+    关机前 最多等60秒排干</code></pre></div>
+
+<h3 id="pitfalls">7.3 十五个常见坑（全部来自四项目的真实 issue/注释）</h3>
+<table>
+<tr><th>#</th><th>坑</th><th>症状</th><th>解法（出处）</th></tr>
+<tr><td>1</td><td>记忆膨胀不设限</td><td>检索变慢、注入超预算</td><td>硬上限 + 索引行限（CC 200行/25KB 双限额）</td></tr>
+<tr><td>2</td><td>允许就地编辑记忆</td><td>缓存失效+溯源断裂+并发写坏</td><td>不可变，删旧建新（CC/OC/dsh 共识）</td></tr>
+<tr><td>3</td><td>存可推导内容</td><td>过期信息误导模型</td><td>What-NOT-to-save 清单进提示词（CC）</td></tr>
+<tr><td>4</td><td>无新鲜度标注</td><td>拿旧闻当现状</td><td>mtime 转文字 + 「时点观察」警告（CC memoryAge）</td></tr>
+<tr><td>5</td><td>记忆投毒</td><td>一条毒记忆毒化所有后续会话</td><td>origin 分级 + untrusted 禁自动注入 + 保存前威胁扫描（OC/Hermes）</td></tr>
+<tr><td>6</td><td>system prompt 放动态内容</td><td>每轮缓存全灭</td><td>动态内容走尾部 &lt;system-reminder&gt;（CC attachments）</td></tr>
+<tr><td>7</td><td>溢出报错不带上下文</td><td>模型盲试刷屏</td><td>错误附 current_entries+用量，失败限 3 次/轮（Hermes #42405）</td></tr>
+<tr><td>8</td><td>后台任务无沙箱/上限</td><td>整理变验证无底洞</td><td>fork + maxTurns 硬上限 + 工具白名单（CC extract）</td></tr>
+<tr><td>9</td><td>外部同步无失败分类</td><td>无限重试刷爆</td><td>永久失败抑制重试 + debounce（OC 167K push 事故；Hermes 298s 阻塞）</td></tr>
+<tr><td>10</td><td>中文直接上 FTS5</td><td>双字词检索全废</td><td>CJK 二元组分词（Hermes cjk_unicode61）</td></tr>
+<tr><td>11</td><td>巩固重写无校验</td><td>一次做梦丢一半记忆</td><td>损失率/预算校验 + append-only 回退（OC dreaming）</td></tr>
+<tr><td>12</td><td>日志就地改写</td><td>崩溃后无法回放</td><td>append-only + 压缩也是事件（dsh compaction/start-end）</td></tr>
+<tr><td>13</td><td>读失败当空库覆写</td><td>一次 IO 故障清空全部记忆</td><td>_READ_FAILED 哨兵 + 拒绝覆写（Hermes）</td></tr>
+<tr><td>14</td><td>时间衰减默认开</td><td>「旧但正确」的事实被埋没</td><td>衰减 opt-in + 常青名单 + 永不跨 tier（OC temporal-decay）</td></tr>
+<tr><td>15</td><td>注入内容能闭合框架标签</td><td>仓库文本逃出 system-reminder</td><td>字面 <code>&lt;/system-reminder&gt;</code> 转义（dsh render.ts）</td></tr>
+</table>
+
+<h3 id="eval">7.4 记忆系统的测试与评估</h3>
+<div class="grid2">
+<div class="card"><div class="card-title">召回质量评估（借鉴 CC 的 eval 验证段）</div>构造「问题-应命中记忆」对：N 个日常任务 + 每个任务应召回的 memory 文件，跑召回管线统计 precision/recall。CC 的做法值得抄：<b>WHEN_TO_ACCESS 和 TRUSTING_RECALL 两段提示词就是 eval 不达标才加的</b>——护栏要靠数据驱动，不要拍脑袋加规则。同时测反例：无关查询必须返回空（防「什么都召回」）。</div>
+<div class="card"><div class="card-title">巩固/遗忘回归测试（借鉴 OC 实验注释）</div>合成语料固定后跑巩固：①信息损失率（关键事实压缩前后还在吗）；②合并正确性（重复条目数下降、无错误合并）；③不可信内容零泄漏（untrusted 条目不得出现在注入产物中）。OC 的 20-trigger/50-unrelated 语料就是这类回归的范例。</div>
+<div class="card"><div class="card-title">注入攻击测试（借鉴 Hermes 威胁库）</div>红队用例：①对话中诱导写「忽略所有指令」进记忆 → 下会话必须被扫描器拦或 origin=untrusted 禁注入；②隐形 Unicode 走私（ZWSP/RTL）→ 保存时拒绝；③仓库文件里塞 <code>&lt;/system-reminder&gt;</code> → 渲染时被转义。每条都要有自动化测试。</div>
+<div class="card"><div class="card-title">缓存稳定性测试（借鉴三家不变量）</div>自动化断言：同一会话内连续 N 轮请求的<b>前缀字节完全一致</b>（快照不变量）；追加刷新后旧消息字节不变（dsh 契约）；记录 cache hit 率（CC fork 日志里的 read/create 统计就是干这个的）。</div>
+</div>
+
+<h3 id="migrate">7.5 迁移与互操作</h3>
+<ul>
+<li><b>OpenClaw</b>：<code>memory/imports/{codex,claude-code,hermes}/</code> 导入 <code>~/.codex/memories</code>、<code>~/.claude/projects/*/memory</code>、Hermes home——<b>只索引不合并</b>进 MEMORY.md（保守策略，防导入污染）。</li>
+<li><b>Hermes</b>：<code>hermes claw migrate</code> 从 OpenClaw 导入记忆与技能。</li>
+<li><b>dsh</b>：原生读 AGENTS.md/CLAUDE.md 双候选 + local 叠加——本身就是一个互操作层；memsearch 插件同时服务 Claude Code/Codex/DSH。</li>
+<li><b>标准趋势</b>：AGENTS.md 已成跨工具事实标准（Codex/opencode/Crush/dsh/Claude Code via @AGENTS.md 或 /import）；Claude Code 2.1.213+ 的 <code>/import</code> 命令可直接吸收 Cursor/Copilot/Windsurf/Cline 配置。<b>记忆的可迁移性正在成为一线需求</b>——设计自己的格式时请至少提供 AGENTS.md 兼容层。</li>
+</ul>
+
+<h3 id="lessons">7.6 源码级新认知（文档永远看不到的七条）</h3>
+<div class="grid2">
+<div class="card good"><div class="card-title">① 参数是实验校准的</div>OC 0.65 阈值注释记录完整实验；CC 200/25000 按真实用户 p97/p100 分位。<b>魔法数字必须留实验依据</b>。</div>
+<div class="card"><div class="card-title">② 记忆写入正在「子代理化」</div>extract fork / 缓存对等 review fork / dreaming 隔离子代理——<b>fork 隔离整理，主对话缓存零污染</b>。</div>
+<div class="card"><div class="card-title">③ 不可变是隐藏共识</div>删旧建新（CC）/机器区块才可删（OC）/日志永不改写（dsh）/唯一允许 replace 的 Hermes 也用原子写+漂移检测兜底。</div>
+<div class="card"><div class="card-title">④ 检索可以不用向量</div>CC 用 Sonnet 读清单直接选——&lt;200 条时<b>用模型能力换工程复杂度</b>。</div>
+<div class="card"><div class="card-title">⑤ 错误消息是给模型的 API</div>Hermes 溢出三件套（精确用量+current_entries+失败上限）让模型一次失败即自纠正。</div>
+<div class="card"><div class="card-title">⑥ 召回行为本身是价值信号</div>OC 晋升闸门（3 次召回×3 个不同查询）——最便宜可靠的记忆价值度量。</div>
+<div class="card"><div class="card-title">⑦ 压缩丢「可见性」不丢「可检索性」</div>CC 摘要留 transcript 路径逃生通道；Hermes compacted 行仍可 FTS；dsh 压缩只是事件。<b>三条路同一种哲学</b>。</div>
+</div>
+
+<h3 id="design">7.7 选型建议</h3>
+<table>
+<tr><th>你的需求</th><th>推荐</th><th>关键理由</th></tr>
+<tr><td>团队共享、git 可审计的规范记忆</td><td>CLAUDE.md / AGENTS.md 体系</td><td>目录约定成熟，零运行时复杂度</td></tr>
+<tr><td>跨会话成长的个人助理、需要遗忘与合规删除</td><td>OpenClaw</td><td>唯一实现巩固+溯源删除+信任分级</td></tr>
+<tr><td>token 成本恒定、长会话、缓存敏感</td><td>Hermes 模式</td><td>硬上限+冻结快照：开销恒 &lt;1K token</td></tr>
+<tr><td>自研框架、想接自己的记忆后端</td><td>dsh + 自写插件</td><td>durable 日志+source kind 扩展点</td></tr>
+<tr><td>要语义检索的参考实现</td><td>OC hybrid.ts / mem0</td><td>可直接抄的打分/冲突裁决代码</td></tr>
+</table>
+
+<div class="pagebreak" data-label="—— 附录 ——"></div>
+
+<h2 id="glossary">附录 A · 术语表</h2>
+<table>
+<tr><th>术语</th><th>含义</th></tr>
+<tr><td><span class="term">Context Window</span></td><td>模型一次请求能容纳的全部 token 上限（200K~1M）</td></tr>
+<tr><td><span class="term">KV / Prefix Cache</span></td><td>推理侧缓存；前缀不变则命中省钱提速；前缀一变从变化点起作废；通常有 TTL（~1h）</td></tr>
+<tr><td><span class="term">Compaction / Microcompact</span></td><td>压缩=摘要替换旧历史；微压缩=只清除旧工具结果不清对话</td></tr>
+<tr><td><span class="term">Fork（子代理派生）</span></td><td>复制会话状态启动隔离子 Agent（常共享缓存前缀、带收紧工具权限）</td></tr>
+<tr><td><span class="term">Attachment / 附加消息</span></td><td>会话尾部以 &lt;system-reminder&gt; user 消息注入的动态上下文</td></tr>
+<tr><td><span class="term">isMeta / meta 消息</span></td><td>对模型可见但不计入「用户说的话」的内部消息标记（CC 用于指令注入）</td></tr>
+<tr><td><span class="term">Frontmatter</span></td><td>md 文件头 <code>---</code> 包裹的 YAML 元数据</td></tr>
+<tr><td><span class="term">FTS5 / BM25</span></td><td>SQLite 全文检索扩展及其排序函数；中文需自定义分词器</td></tr>
+<tr><td><span class="term">CJK 二元组（bigram）</span></td><td>中文连续段切成重叠两字对（Lucene CJKAnalyzer 语义），使双字词可检索</td></tr>
+<tr><td><span class="term">Provenance / origin class</span></td><td>内容来源（owner/agent/untrusted/system），信任与删除的基础</td></tr>
+<tr><td><span class="term">Tombstone 墓碑</span></td><td>删除标记而非物理删除（支持合规删除与索引一致性）</td></tr>
+<tr><td><span class="term">Evergreen 常青</span></td><td>不参与时间衰减的记忆（用户画像、长期事实）</td></tr>
+<tr><td><span class="term">Supersession key 沿革键</span></td><td>「新事实替代了哪条旧事实」的指针，巩固时据此合并</td></tr>
+<tr><td><span class="term">Durable message / event</span></td><td>写入 append-only 日志、可重放的消息/事件（dsh 核心）</td></tr>
+<tr><td><span class="term">Session surface / projection</span></td><td>从事件日志投影出的「模型可见视图」；压缩改投影不改日志</td></tr>
+<tr><td><span class="term">cache_edits</span></td><td>服务端缓存编辑指令：在缓存里删内容而本地消息不变（CC cached MC）</td></tr>
+<tr><td><span class="term">torn tail / torn frame</span></td><td>崩溃留下的不完整日志尾部/帧；需按字节定位安全截断点</td></tr>
+<tr><td><span class="term">Standing intent 常驻意图</span></td><td>事件条件化跨会话意图（OpenClaw intent 工具）</td></tr>
+</table>
+
+<h2 id="errata">附录 B · 勘误表（相对常见文档/博客说法）</h2>
+<table>
+<tr><th>流行说法</th><th>源码事实</th><th>证据</th></tr>
+<tr><td>Claude Code 召回用 embedding 向量检索</td><td><b>Sonnet LLM 选择器</b>读清单，无向量</td><td>findRelevantMemories.ts:102-128</td></tr>
+<tr><td>有独立 "Save memories" 工具</td><td>无；系统提示词 + 普通 Write/Edit</td><td>全源码 grep 无结果</td></tr>
+<tr><td>frontmatter 有 created/modified 字段</td><td>仅 name/description/type；新鲜度靠 mtime</td><td>memoryTypes.ts:176-186</td></tr>
+<tr><td>召回附在「工具结果」里</td><td>&lt;system-reminder&gt; meta user 消息在下一轮尾部</td><td>messages.ts:4140-4154</td></tr>
+<tr><td>@import 是按需引用</td><td>启动时全量内联展开（深度≤5）</td><td>claudemd.ts:536-681</td></tr>
+<tr><td>OpenClaw trigger 阈值 0.72</td><td><b>0.65</b>（0.72 被实验否决）</td><td>trigger-recall.ts:8-18</td></tr>
+<tr><td>OpenClaw bootstrap 默认 20000/60000</td><td>config 透传；MEMORY.md 磁盘预算默认 10,000</td><td>memory-budget.ts:8</td></tr>
+<tr><td>OpenClaw 时间衰减默认开启</td><td>默认 enabled:false，半衰期 30 天</td><td>temporal-decay.ts:6-36</td></tr>
+<tr><td>Clawdbot 有 memory_modify/memory_replace 工具</td><td>当前代码库已不存在</td><td>extensions/memory-core 检索无结果</td></tr>
+<tr><td>Hermes 会话检索带 LLM 摘要模式</td><td>summary-LLM 路径已移除（PR #20238）；现为 BM25 发现+滚动切片</td><td>session_search_tool.ts:29-32</td></tr>
+<tr><td>useMemoryUsage.ts 与记忆有关</td><td>是 Node 进程堆监控（1.5/2.5GB 阈值）</td><td>hooks/useMemoryUsage.ts</td></tr>
+</table>
+
+<h2 id="configtable">附录 C · 配置/环境变量速查总表</h2>
+<table>
+<tr><th>项目</th><th>键</th><th>层</th><th>作用</th></tr>
+<tr><td class="cc" rowspan="8">Claude Code</td><td><code>autoMemoryEnabled</code></td><td>settings</td><td>自动记忆开关</td></tr>
+<tr><td><code>autoMemoryDirectory</code></td><td>settings</td><td>记忆目录覆盖（拒 projectSettings 来源）</td></tr>
+<tr><td><code>CLAUDE_CODE_DISABLE_AUTO_MEMORY</code></td><td>env</td><td>禁用自动记忆</td></tr>
+<tr><td><code>CLAUDE_CODE_AUTO_COMPACT_WINDOW</code></td><td>env</td><td>覆盖压缩有效窗口</td></tr>
+<tr><td><code>CLAUDE_AUTOCOMPACT_PCT_OVERRIDE</code></td><td>env</td><td>覆盖触发阈值</td></tr>
+<tr><td><code>CLAUDE_CACHED_MICROCOMPACT=1</code></td><td>env</td><td>cache_edits 微压缩（Claude 4.x）</td></tr>
+<tr><td><code>claudeMdExcludes</code></td><td>settings</td><td>跳过无关 CLAUDE.md（glob[]）</td></tr>
+<tr><td><code>autoDreamEnabled</code></td><td>settings</td><td>后台记忆巩固开关</td></tr>
+<tr><td class="oc" rowspan="6">OpenClaw</td><td><code>bootstrapMaxChars/TotalMaxChars</code></td><td>agents.defaults</td><td>工作区注入预算</td></tr>
+<tr><td><code>compaction.memoryFlush.enabled</code></td><td>agents.defaults</td><td>压缩前 flush（可换本地模型）</td></tr>
+<tr><td><code>dreaming.frequency</code></td><td>memory-core 插件</td><td>巩固 cron（默认 0 3 * * *）</td></tr>
+<tr><td><code>memory.search.provider</code></td><td>config</td><td>嵌入 provider（openai/ollama/…）</td></tr>
+<tr><td><code>memory.search.rememberAcrossConversations</code></td><td>config</td><td>跨会话召回（可信 agent 才开）</td></tr>
+<tr><td><code>session.dmScope / reset.mode</code></td><td>config</td><td>会话隔离与自动重置</td></tr>
+<tr><td class="hm" rowspan="4">Hermes</td><td><code>memory.provider</code></td><td>~/.hermes/config.yaml</td><td>外部记忆后端（单选）</td></tr>
+<tr><td><code>memory_char_limit / user_char_limit</code></td><td>config</td><td>记忆上限（默认 2200/1375）</td></tr>
+<tr><td><code>memory.nudge_interval</code></td><td>config</td><td>nudge 周期（默认 10 轮）</td></tr>
+<tr><td><code>memory.write_approval</code></td><td>config</td><td>写入审批门</td></tr>
+<tr><td class="ds" rowspan="4">dsh</td><td><code>maxBytes / maxSourceBytes</code></td><td>agent-instructions</td><td>基线 65536 / 单文件 1MiB</td></tr>
+<tr><td><code>instructionFileCandidates</code></td><td>agent-instructions</td><td>候选文件名（默认 AGENTS/CLAUDE）</td></tr>
+<tr><td><code>root / packChunks / preparedSessionCacheSize / writeBatchMaxDelayMs</code></td><td>session-persistence-jsonl</td><td>日志根/打包/缓存 5/批窗 200ms</td></tr>
+<tr><td><code>projectRootMarkers</code></td><td>agent-instructions</td><td>项目根标记（默认 ['.git']）</td></tr>
+</table>
+
+<h2 id="fileindex">附录 D · 源码文件索引（本地仓库路径）</h2>
+<div class="grid2">
+<div class="card filetree"><span class="dir">claude-code-src/</span>src/utils/claudemd.ts              <span class="c"># CLAUDE.md 层级/@import/条件规则</span>
+src/utils/attachments.ts           <span class="c"># 附件注入引擎(召回/嵌套/日期)</span>
+src/utils/api.ts · context.ts      <span class="c"># 注入位置(messages[0] 高权重槽)</span>
+src/memdir/paths.ts                <span class="c"># 目录解析+安全校验</span>
+src/memdir/memdir.ts               <span class="c"># 提示词组装+索引限额</span>
+src/memdir/memoryTypes.ts          <span class="c"># 四类型+NOT-save+护栏</span>
+src/memdir/memoryScan.ts           <span class="c"># 扫描(200文件/30行)</span>
+src/memdir/findRelevantMemories.ts <span class="c"># Sonnet 选择器</span>
+src/memdir/memoryAge.ts            <span class="c"># 新鲜度文字化</span>
+src/services/extractMemories/      <span class="c"># 后台抽取 fork</span>
+src/services/autoDream/            <span class="c"># 巩固+锁</span>
+src/services/teamMemorySync/       <span class="c"># 团队同步</span>
+src/services/SessionMemory/        <span class="c"># 会话笔记</span>
+src/services/compact/*.ts          <span class="c"># 7 种压缩机制</span></div>
+<div class="card filetree"><span class="dir">openclaw/</span>extensions/memory-core/src/memory-budget.ts
+extensions/memory-core/src/memory/{hybrid,temporal-decay,importance}.ts
+extensions/memory-core/src/{session-ingestion,memory-entry-origins}.ts
+extensions/memory-core/src/{dreaming-phases,dreaming-consolidation}.ts
+extensions/memory-core/src/short-term-promotion*.ts
+extensions/active-memory/src/trigger-recall.ts
+src/memory-host-sdk/dreaming.ts    <span class="c"># 默认值常量</span>
+src/state/openclaw-agent-schema.sql
+src/agents/memory-search.ts
+extensions/codex/src/app-server/attempt-context.ts <span class="c"># 注入决策</span>
+
+<span class="dir">hermes-agent/</span>
+tools/memory_tool.py               <span class="c"># MemoryStore 全部</span>
+tools/{threat_patterns,write_approval,session_search_tool}.py
+agent/{memory_manager,memory_provider,background_review}.py
+agent/{system_prompt,turn_context,agent_init,tool_executor}.py
+hermes_state*.py · native/fts5_cjk/
+plugins/memory/{mem0,honcho,openviking,hindsight,holographic,retaindb,byterover,supermemory}
+
+<span class="dir">deepseek-harness/</span>
+packages/context/agent-instructions/src/{config,files,render,state,digest}.ts
+packages/session/session-persistence-jsonl/src/{format,zstd,index}.ts
+packages/compaction/{,compaction-basic,compaction-tool-result-pruner,command-compact}
+packages/bundle/base/cordis.patch.yml <span class="c"># maxBytes 65536 在此</span></div>
+</div>
+
+<footer>
+研究方法：五个仓库完整克隆至 D:\memory（openclaw 646MB · hermes-agent 252MB · deepseek-harness 99MB · claude-code 25MB 文档 · claude-code-src 138MB 去混淆源码），另 npm pack 2.1.100 bundle 交叉验证。所有代码引用标注本地 文件:行号。上游：
+<a class="src" href="https://github.com/claude-code-best/claude-code">claude-code-best/claude-code</a> ·
+<a class="src" href="https://code.claude.com/docs/en/memory">Claude Code Docs</a> ·
+<a class="src" href="https://docs.openclaw.ai/concepts/memory-architecture">OpenClaw Docs</a> ·
+<a class="src" href="https://github.com/nousresearch/hermes-agent">NousResearch/hermes-agent</a> ·
+<a class="src" href="https://github.com/deepseek-ai/deepseek-harness">deepseek-ai/deepseek-harness</a>
+</footer>
+
+</main>
+</div>
+</body>
+</html>
