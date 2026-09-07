@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>记忆架构 One-Page Report：Claude Code vs Cline（源码级）</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;background:#ffffff;color:#24292f;line-height:1.75;padding:40px 5vw 80px}
+.wrap{max-width:1150px;margin:0 auto}
+h1{font-size:32px;color:#1a3a5c;margin-bottom:6px;letter-spacing:.5px}
+.sub{color:#57606a;font-size:14px;margin-bottom:28px}
+h2{font-size:21px;color:#0f4c81;margin:36px 0 12px;border-left:4px solid #0f4c81;padding-left:10px;border-bottom:1px solid #eaeef2;padding-bottom:6px}
+h3{font-size:16.5px;color:#1a3a5c;margin:18px 0 8px}
+p,li{font-size:15px;margin-bottom:8px;max-width:70em}
+ul,ol{padding-left:1.6em}
+code{font-family:Consolas,Monaco,monospace;background:#f2f5f8;color:#0b5cad;padding:1px 6px;border-radius:4px;font-size:13px}
+pre{background:#fafbfc;border:1px solid #d8dee4;border-radius:8px;padding:14px 18px;overflow-x:auto;margin:10px 0}
+pre code{background:none;padding:0;color:#2f363d;font-size:12.8px;line-height:1.55}
+table{border-collapse:collapse;margin:12px 0;width:100%;font-size:13.5px}
+th{background:#f0f4f8;color:#0f4c81}
+th,td{border:1px solid #d8dee4;padding:7px 10px;text-align:left;vertical-align:top}
+tr:nth-child(even) td{background:#fafbfc}
+.note{background:#f2f7fc;border-left:4px solid #0f4c81;padding:10px 16px;border-radius:0 8px 8px 0;margin:12px 0;font-size:14.5px}
+.warn{background:#fdf6ee;border-left:4px solid #c07a2d;padding:10px 16px;border-radius:0 8px 8px 0;margin:12px 0;font-size:14.5px}
+.ok{background:#f2faf4;border-left:4px solid #2c8a4b;padding:10px 16px;border-radius:0 8px 8px 0;margin:12px 0;font-size:14.5px}
+.kw{color:#c07a2d;font-weight:bold}
+.src{color:#57606a;font-size:12.8px;font-family:Consolas,monospace}
+.badge{display:inline-block;background:#ffffff;border:1px solid #c9d4de;color:#0f4c81;border-radius:12px;padding:2px 12px;font-size:12.5px;margin:0 6px 6px 0}
+.flow{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin:12px 0}
+.flow .box{background:#f7fafc;border:1px solid #0f4c81;border-radius:8px;padding:6px 12px;font-size:13.5px}
+.flow .box.g{border-color:#2c8a4b}
+.flow .arr{color:#c07a2d;font-size:18px}
+.cols{display:flex;gap:26px;flex-wrap:wrap}
+.cols>div{flex:1;min-width:26em}
+.tag-cc{color:#1a7f37;font-weight:bold}
+.tag-cl{color:#b35900;font-weight:bold}
+</style></head><body><div class="wrap">
+
+<h1>记忆架构 One-Page Report：Claude Code <span style="color:#8a949e">vs</span> Cline</h1>
+<div class="sub">源码级对照 · 全架构覆盖 + 主要带注释代码 · 2026-09-07</div>
+<p><span class="badge">Claude Code（claude-code-src，本地核对）</span><span class="badge">Cline（github.com/cline/cline @ main，2026-09-07 快照）</span>
+口径：两家都是"文件记忆"路线，但 <span class="tag-cc">Claude Code</span> 把记忆做成<b>框架自动管理的双轨注入系统</b>（入口全量 + 小模型挑选），<span class="tag-cl">Cline</span> 把记忆做成<b>用户可编辑的规则文件体系 + 确定性门控</b>（toggle / frontmatter 条件），会话内则都靠"摘要压缩"续命，实现深度不同。</p>
+
+<h2>1 · 全架构一图流</h2>
+<div class="cols">
+<div>
+<h3><span class="tag-cc">Claude Code</span>：双轨注入 + 四级压缩</h3>
+<div class="flow">
+<span class="box">CLAUDE.md（项目/用户指令记忆）</span><span class="arr">→</span>
+<span class="box">MEMORY.md 入口（≤200行/25KB，全量注入）</span><span class="arr">→</span>
+<span class="box">memdir 描述清单（只读 frontmatter）</span><span class="arr">→</span>
+<span class="box g">小模型挑选 ≤5 条（相关才注入）</span><span class="arr">→</span>
+<span class="box">system prompt</span>
+</div>
+<div class="flow">
+<span class="box">microCompact（清旧工具结果）</span><span class="arr">→</span>
+<span class="box">autoCompact（摘要替换，20k 预留）</span><span class="arr">→</span>
+<span class="box">reactiveCompact（API 超限兜底）</span><span class="arr">→</span>
+<span class="box">/compact 手动（四级调度链）</span>
+</div>
+</div>
+<div>
+<h3><span class="tag-cl">Cline</span>：规则文件体系 + 确定性门控</h3>
+<div class="flow">
+<span class="box">custom instructions（全局）</span><span class="arr">→</span>
+<span class="box">.clinerules/（文件或目录，逐文件 toggle）</span><span class="arr">→</span>
+<span class="box g">frontmatter 条件规则（paths: glob 门控）</span><span class="arr">→</span>
+<span class="box">workflows（按需手动触发）</span><span class="arr">→</span>
+<span class="box">system prompt</span>
+</div>
+<div class="flow">
+<span class="box">Auto Compact（SDK 摘要压缩）</span><span class="arr">→</span>
+<span class="box">checkpoints（回滚到压缩前）</span><span class="arr">→</span>
+<span class="box">FileContextTracker（外部改文件→stale 提醒）</span><span class="arr">→</span>
+<span class="box">focus chain（-[ ] 清单跨压缩保主线）</span>
+</div>
+</div>
+</div>
+
+<h2>2 · 六维架构对照表</h2>
+<table>
+<tr><th>维度</th><th>Claude Code</th><th>Cline</th></tr>
+<tr><td>跨会话记忆载体</td><td>markdown 文件：<code>CLAUDE.md</code>（项目/用户指令）+ <code>MEMORY.md</code> 入口 + memdir 记忆目录（一文件一条，frontmatter 存 description）；另有团队级记忆目录</td><td>markdown 文件：<code>~/.clinerules/</code>（全局）+ 项目 <code>.clinerules/</code> 目录（rules / workflows / hooks / skills 子目录）；兼容导入 Cursor / Windsurf / Agents 规则（external-rules.ts）+ 远程托管规则</td></tr>
+<tr><td>谁写入记忆</td><td><b>模型自己</b>用文件工具写 + 用户显式输入通道（MemoryUpdateNotification 弹通知）；无后台自动提取</td><td><b>用户/团队</b>手工维护（进 git 版本管理），UI 提供创建/删除/开关；Memory Bank 场景下模型按指令更新 memory-bank/*.md</td></tr>
+<tr><td>带什么进上下文</td><td>双轨：入口文件<b>无条件全量</b>（物理限容 200 行/25KB）+ memdir 按任务<b>小模型挑选 ≤5</b>（只读描述清单，选完才读全文）</td><td>规则默认全量拼接；门控是<b>确定性的</b>：逐文件 toggle 开关 + YAML frontmatter <code>paths:</code> glob 条件（命中当前工作区路径才激活）；workflows 完全按需（手动触发）</td></tr>
+<tr><td>会话内压缩</td><td>四级：<code>microCompact</code>（白名单清旧工具结果，冷/热缓存两种模式）→ <code>autoCompact</code>（结构化摘要，20k 预留输出，分级 buffer，连续失败 3 次熔断）→ <code>reactiveCompact</code>（prompt-too-long 报错兜底）→ <code>/compact</code> 手动</td><td><code>Auto Compact</code> 单级：接近窗口上限时 LLM 摘要替换历史（SDK <code>createContextCompactionPrepareTurn</code>；手动入口 sdk-compaction.ts）；不支持摘要的模型<b>回退规则截断</b>；压缩产物为 sidecar，正式 transcript 不被替换，可经 checkpoint 回滚</td></tr>
+<tr><td>防"记忆变垃圾"</td><td>入口文件双上限截断 + 注入去重（轨道 B 排除轨道 A）+ 挑选提示词"不确定就不选、允许空选"</td><td>规则生命周期由用户管理（扫描↔toggle 同步、删除即清理）；条件规则天然限域（paths 不命中不注入，<code>paths: []</code> 显式关闭）</td></tr>
+<tr><td>上下文新鲜度</td><td>memoryAge（按 mtime 衰减记忆新鲜度）；压缩游标 <code>lastSummarizedMessageId</code> 防孤儿 tool_result</td><td><b>独有</b>：FileContextTracker 用 chokidar 监听上下文中文件的<b>外部修改</b>（区分 Cline 自改/用户改），标记 stale 并提醒重读；focus chain（<code>- [ ]</code> 清单）帮助跨多次压缩维持任务主线</td></tr>
+</table>
+
+
+<h2>3 · Claude Code 写侧：事实是如何被记下来的（补全最后一环）</h2>
+<p>在展开"存了什么 → 怎么挑 → 怎么注入"之前，先回答最根本的问题：<b>这些 .md 文件最初是怎么出现的？</b>答案出人意料地朴素——<b>Claude Code 没有任何后台记忆提取管道，事实全部由模型自己在对话中用普通的 Write/Edit 工具记下来</b>。框架唯一做的事，是把一套"怎么记"的规约注入系统提示词（<code>buildMemoryLines()</code>，memdir.ts:199-266）。读侧（§4-§6）有小模型参与，<b>写侧是纯提示词工程 + 普通工具调用</b>。</p>
+
+<h3>3.1 模型每轮都带着的"记事手册"（系统提示词原文节选）</h3>
+<pre><code>① 记什么 —— 四种类型（memoryTypes.ts · TYPES_SECTION_INDIVIDUAL）：
+
+&lt;type&gt;
+    &lt;name&gt;user&lt;/name&gt;
+    &lt;description&gt;The user's role, goals, preferences, responsibilities...&lt;/description&gt;
+&lt;/type&gt;
+&lt;type&gt;
+    &lt;name&gt;feedback&lt;/name&gt;
+    &lt;description&gt;Guidance from the user about how to approach work — what to avoid
+    and what to keep doing. Record from failure AND success. Include *why* so you
+    can judge edge cases later. Structure content as: rule/fact, then **Why:**
+    and **How to apply:** lines.&lt;/description&gt;   ← 强制带 Why/How：否则将来无法判断边界
+&lt;/type&gt;
+&lt;type&gt;
+    &lt;name&gt;project&lt;/name&gt;
+    &lt;description&gt;...not derivable from code or git history. Convert relative dates
+    to absolute dates (e.g., "Thursday" → "2026-03-05").&lt;/description&gt;  ← 防时间腐烂
+&lt;/type&gt;
+&lt;type&gt;
+    &lt;name&gt;reference&lt;/name&gt;
+    &lt;description&gt;Pointers to external systems (Linear, Slack, Grafana...).&lt;/description&gt;
+&lt;/type&gt;
+
+② 不记什么 —— 反向清单（WHAT_NOT_TO_SAVE_SECTION）：
+- 代码模式/架构/文件路径 —— "读当前项目就能推导"
+- git 历史 —— "git log 是权威"
+- 调试方案 —— "修复在代码里，上下文在 commit message 里"
+- CLAUDE.md 已有的内容
+- 临时任务状态
+
+These exclusions apply even when the user explicitly asks you to save.
+↑ eval 验证过的硬门（0/2 → 3/3）：用户说"存下这周 PR 列表"，
+  正确行为不是照存，而是反问"哪条让你意外？"——防记忆库退化成流水账</code></pre>
+
+<h3>3.2 两步写入流程 + 一个完整例子</h3>
+<pre><code>规约原文（memdir.ts howToSave）：
+**Step 1** — write the memory to its own file using frontmatter format
+**Step 2** — add a pointer in MEMORY.md. It is an index, not a memory —
+            each entry one line, under ~150 characters. Never write memory
+            content directly into MEMORY.md.
+四条维护纪律：字段随内容更新 / 按主题组织非按时间 / 错了就删改 /
+            写新前先查有没有可更新的旧记忆（防重复）
+显式指令：用户说"记住X"→ 立刻存最合适的类型；说"忘掉X"→ 找到并删除
+
+━━━ 实例：用户说"以后回答尽量用中文，我不看英文" ━━━
+
+模型发起两次普通工具调用（没有任何特殊记忆 API）：
+
+Write(~/.claude/memories/feedback_language.md)
+---
+name: 中文回复偏好
+description: 用户要求所有回复使用中文
+type: feedback
+---
+所有回复使用中文。
+
+**Why:** 用户明确表示不看英文。
+**How to apply:** 每次生成回复时默认中文，代码和技术术语除外。
+
+Edit(~/.claude/memories/MEMORY.md)
+- [中文回复偏好](feedback_language.md) — 所有回复默认中文
+
+下次会话：MEMORY.md 全量注入（轨 A）→ 小模型选中（轨 B）→ 正文注入 → 中文回答。
+写侧与 §4-§6 的读侧闭环完成。</code></pre>
+
+<h3>3.3 记下来之后怎么信：读侧防呆反过来又成了写侧维护</h3>
+<pre><code>TRUSTING_RECALL_SECTION（原文）：
+"A memory that names a specific function, file, or flag is a claim that it
+existed *when the memory was written*."
+- 记忆提到文件路径 → 先确认文件还存在
+- 记忆提到函数/flag → 先 grep
+"The memory says X exists" is not the same as "X exists now."
+
+MEMORY_DRIFT_CAVEAT：
+"If a recalled memory conflicts with current information, trust what you
+observe now — and update or remove the stale memory rather than acting on it."
+↑ 冲突时以当前观察为准，且【顺手删改过期记忆】——读取触发维护</code></pre>
+<table>
+<tr><th></th><th>写入方式</th><th>成本/代价</th></tr>
+<tr><td><b>Claude Code</b></td><td>模型按提示词规约自己调 Write/Edit，零后台进程</td><td>漏记"模型没意识到该记"的事实；收益是零基础设施、全程用户可见、文件可 git 管理</td></tr>
+<tr><td><b>Hermes</b></td><td>后台 background_review 管道自动提取 + write approval gate</td><td>每轮额外推理与审批延迟</td></tr>
+<tr><td><b>Cline Memory Bank</b></td><td>同样是模型写 md，但靠用户复制的 prompt 方法论驱动</td><td>零代码，但无 frontmatter/类型/去重等结构化规约</td></tr>
+</table>
+<div class="ok">至此完整闭环：<b>写侧</b>（§3 规约驱动模型自记）→ <b>存储</b>（§4 索引+文件两层）→ <b>检索</b>（§5 小模型挑选）→ <b>注入</b>（§6 双轨+去重）→ 读侧冲突又回流写侧维护。Claude Code 的取舍：不追求自动提取所有事实，只靠一套 eval 反复调优的规约让模型在正常对话中"顺手"记录。</div>
+
+<h2>4 · Claude Code 存储：记忆库在磁盘上长什么样</h2>
+<p>全部记忆就是工作目录下的一堆 markdown 文件——<b>没有数据库</b>。沿用全文的例子，假设用户长期做接口性能分析，记忆库是这样：</p>
+<pre><code>memory/
+├── MEMORY.md            ← 入口文件（轨道 A：每次请求全量注入）
+├── perf-baseline.md     ← 详细记忆，一条一个文件（轨道 B：按需挑选）
+├── report-style.md      ← 同上
+└── coffee.md            ← 同上（与本任务无关的"噪音记忆"）</code></pre>
+<div class="cols"><div>
+<h3>MEMORY.md（入口，只放浓缩事实）</h3>
+<pre><code># 自动记忆入口
+- 用户在做订单服务的接口性能优化
+- 报告必须用 markdown 表格、注明单位 ms
+- 订单接口 P99 基线 320 ms</code></pre>
+<h3>perf-baseline.md（详细记忆，frontmatter 带 description）</h3>
+<pre><code>---
+description: 性能基线参数：订单接口 P99 阈值 320 ms，采样窗口 10 s
+---
+2026-06 压测标定记录：jmeter 500 并发、采样窗口 10 s，
+P99 基线 320 ms；强依赖 order-service→inventory 链路，
+压测前需预热缓存 3 分钟……（几百行细节）</code></pre>
+<p><b>description 与正文的分工</b>是整个设计的支点：description 一句话、给<b>检索</b>看；正文几百行、给<b>命中后的任务</b>看。coffee.md 也有自己的 description（"团队咖啡偏好记录"），它在库里合法存在，只是很少被选中。</p>
+</div><div>
+<h3>入口为什么敢全量注入：物理限容</h3>
+<pre><code>export const MAX_ENTRYPOINT_LINES = 200
+// ~125 chars/line at 200 lines. At p97 today; catches long-line
+// indexes that slip past the line cap (p100 observed: 197KB
+// under 200 lines).
+// ↑ 真实事故：200 行内写了 197KB——单限行数挡不住
+export const MAX_ENTRYPOINT_BYTES = 25_000</code></pre>
+<p>超限走两级截断（<span class="src">memdir.ts · truncateEntrypointContent</span>）：先按行切；仍超 25KB 再按字节切，<b>且回退到最近的换行符——绝不把一条记忆从中间劈开</b>（半条记忆比没有更糟，模型会把半句当完整事实用）。截断也不静默，末尾追加：</p>
+<pre><code>&gt; WARNING: MEMORY.md is 244KB (limit: 24KB) — index entries
+are too long. Only part of it was loaded. Keep index entries
+to one line under ~200 chars; move detail into topic files.</code></pre>
+<p>连模型都被明确告知"超限了，细节请移到主题文件"——降级必须让消费方知情。</p>
+</div></div>
+
+<h2>5 · Claude Code 检索：一次挑选的完整过程（逐个提示词）</h2>
+<p>用户第 10 轮提问：<b>"帮我分析这次压测的接口延迟，出报告"</b>。挑选分三步：</p>
+<h3>第一步：扫描清单——只读文件头，不读正文（memoryScan.ts）</h3>
+<pre><code>const FRONTMATTER_MAX_LINES = 30   // 每个文件只读前 30 行
+const MAX_MEMORY_FILES = 200       // 清单硬上限
+
+// 产出"目录卡"（formatMemoryManifest），按修改时间新→旧：
+- perf-baseline.md (2026-08-30T02:11:04Z): 性能基线参数：订单接口 P99 阈值 320 ms，采样窗口 10 s
+- report-style.md (2026-08-12T09:40:11Z): 用户偏好：报告用 markdown 表格，注明单位
+- coffee.md (2026-06-01T08:00:00Z): 团队咖啡偏好记录</code></pre>
+<p>清单体积 <b>O(条数)</b>，与每条记忆多长无关——500 个记忆文件也就几 KB。这是后面"用小模型挑选"在成本上可行的前提。入口 MEMORY.md 不进清单（它已经在轨道 A 了）。</p>
+<h3>第二步：把清单 + 任务发给小模型（Sonnet），系统提示词全文如下</h3>
+<pre><code>system（SELECT_MEMORIES_SYSTEM_PROMPT，原文，注释为讲解）:
+
+You are selecting memories that will be useful to Claude Code as it
+processes a user's query. You will be given the user's query and a list
+of available memory files with their filenames and descriptions.
+
+Return a list of filenames for the memories that will clearly be useful
+(up to 5). Only include memories that you are certain will be helpful
+based on their name and description.
+- If you are unsure if a memory will be useful in processing the user's
+  query, then do not include it in your list. Be selective and discerning.
+  // ↑ 宁缺毋滥：这是"挑选"与"检索排序"的本质区别
+- If there are no memories in the list that would clearly be useful,
+  feel free to return an empty list.
+  // ↑ 允许空选：无关任务一条不带（噪音记忆比没有记忆更伤）
+- If a list of recently-used tools is provided, do not select memories
+  that are usage reference or API documentation for those tools ...
+  DO still select memories containing warnings, gotchas, or known issues
+  about those tools — active use is exactly when those matter.
+  // ↑ 精妙细节：正在用的工具不带用法文档，但"坑"恰恰此刻最该带
+
+user（实拼出来的消息）:
+
+Query: 帮我分析这次压测的接口延迟，出报告
+
+Available memories:
+- perf-baseline.md (2026-08-30T02:11:04Z): 性能基线参数：订单接口
+  P99 阈值 320 ms，采样窗口 10 s
+- report-style.md (2026-08-12T09:40:11Z): 用户偏好：报告用 markdown
+  表格，注明单位
+- coffee.md (2026-06-01T08:00:00Z): 团队咖啡偏好记录</code></pre>
+<h3>第三步：结构化输出 + 白名单过滤 + 失败降级</h3>
+<pre><code>const result = await sideQuery({
+  model: getDefaultSonnetModel(),          // 便宜的小模型干挑选
+  max_tokens: 256,                          // 挑选不需要长输出
+  optional: true,                           // 挑选失败可降级，不阻塞主请求
+  output_format: {
+    type: 'json_schema',
+    schema: { properties: { selected_memories: { type: 'array',
+                items: { type: 'string' } } }, ... },
+  },
+  ...
+})
+// 小模型实际返回：
+//   {"selected_memories": ["perf-baseline.md", "report-style.md"]}
+// 白名单过滤：幻觉出的文件名直接丢弃；解析/调用失败一律返回 []
+return parsed.selected_memories.filter(f => validFilenames.has(f))</code></pre>
+<div class="note">成本账：这次挑选总共消耗约 300 token（清单+任务+256 上限的输出），换来的是<b>不注入</b>几百行的正文和无关的 coffee.md。清单模式把挑选成本与记忆库规模解耦，库涨到几百条，挑选成本几乎不变。</div>
+
+<h2>6 · Claude Code 注入：拼装结果与三个对照实验</h2>
+<h3>实验一：相关任务（上面的挑选结果）</h3>
+<pre><code>buildMemoryPrompt() 拼装结果 = 模型实际收到的 system prompt 开头：
+
+你是编程助手 Claude Code。
+
+## MEMORY.md                      ← 轨道 A：无条件全量
+- 用户在做订单服务的接口性能优化
+- 报告必须用 markdown 表格、注明单位 ms
+- 订单接口 P99 基线 320 ms
+
+## 与当前任务相关的记忆文件        ← 轨道 B：只有选中的
+- perf-baseline.md: 性能基线参数：订单接口 P99 阈值 320 ms，采样窗口 10 s
+- report-style.md: 用户偏好：报告用 markdown 表格，注明单位
+（真实实现随后会把选中文件的【正文】读进来追加——分两层注入，
+  即使检索错了，浪费的也只是描述那一行）</code></pre>
+<h3>实验二：无关任务（"帮我写一段年会抽奖词"）</h3>
+<pre><code>// 小模型返回：{"selected_memories": []}   ← 空选是合法且鼓励的
+你是编程助手 Claude Code。
+
+## MEMORY.md
+- 用户在做订单服务的接口性能优化
+...（只有轨道 A；轨道 B 整节消失，coffee.md 依然不出现）</code></pre>
+<h3>实验三：如果没有注入去重会怎样（反面例子）</h3>
+<p>P99 基线这条事实既在 MEMORY.md（第 3 行）又在 perf-baseline.md 的 description 里。若两轨不去重，同一条记忆以两种形式各占一次窗口——所以 <code>findRelevantMemories</code> 在扫描阶段就<b>排除已在 system prompt 的内容</b>。<b>注入层的去重必须在注入层做，不能指望模型自己忽略重复。</b></p>
+<div class="ok">读完这三步再回看两轨定义：<b>存储</b>决定"检索能看到什么"（description 质量 = 检索质量）；<b>检索</b>决定"注入要带什么"（小模型 + 空选契约）；<b>注入</b>决定"模型信什么"（标注来源、分层注入、去重）。三层各司其职，这就是双轨注入的全部。</div>
+
+
+<h2>7 · 四级压缩·实例解剖（Claude Code 生存侧）</h2>
+<table>
+<tr><th>级别</th><th>触发时机</th><th>动作</th><th>信息损失</th></tr>
+<tr><td>① microCompact</td><td>工具结果"老化"后</td><td>旧工具输出 → 一行占位符</td><td>几乎为零（环境快照可复原）</td></tr>
+<tr><td>② autoCompact</td><td>逼近有效窗口</td><td>旧消息 → 结构化摘要</td><td>有损，主力</td></tr>
+<tr><td>③ reactiveCompact</td><td>API 报 "prompt too long"</td><td>紧急压缩后重试</td><td>同②，兜底</td></tr>
+<tr><td>④ /compact 手动</td><td>用户敲命令</td><td>同②，用户控制时机</td><td>用户自担</td></tr>
+</table>
+
+<div class="cols"><div>
+<h3>① microCompact 前后（真实可复现）</h3>
+<pre><code>--- 压缩前 ---
+[user] 分析这个接口的日志
+[tool] ……（第1轮读的 30000 字符日志原文）……
+[tool] ……（第2轮 grep 结果 8000 字符）……
+[tool] ……（刚产生的压测数据）……
+
+--- microcompact 后 ---
+[user] 分析这个接口的日志
+[tool] [Old tool result content cleared]   ← 最旧的被清
+[tool] ……（第2轮 grep 结果）……            ← 保留最近 N 条
+[tool] ……（刚产生的压测数据）……            ← 刚产生的不清</code></pre>
+<p>白名单只有"输出是环境快照"的工具（Read/Shell/Grep/Glob/WebSearch/WebFetch/Edit/Write）；模型推理和用户指令永不清。清了刚产生的结果会导致模型重复调用工具——所以<b>保留最近 N 条</b>。</p>
+</div><div>
+<h3>① 的经济学：冷热缓存分治</h3>
+<pre><code>export async function microcompactMessages(messages, ...) {
+  // 缓存已冷（距上次回复超阈值分钟）→ 前缀反正
+  // 要整体重算，此时清旧结果"免费"：先清再发请求
+  const timeBasedResult = maybeTimeBasedMicrocompact(messages, querySource)
+  if (timeBasedResult) return timeBasedResult
+  // 缓存还热 → 走 cached 路径，原地编辑旧结果
+  // 且尽量不破坏 KV 缓存前缀的连续性（清错反而更贵）
+  if (feature('CACHED_MICROCOMPACT'))
+    return await cachedMicrocompactPath(messages, querySource)
+}</code></pre>
+<p>API 的 prompt 缓存（前缀不变≈1/10 价）决定了"清不清、怎么清"要看缓存状态——这是大多数自研压缩会漏掉的账。</p>
+</div></div>
+
+<div class="cols"><div>
+<h3>② autoCompact 的摘要产物</h3>
+<pre><code>[CONTEXT SUMMARY] 用户要求分析订单接口延迟分布；
+已定位 5 个慢查询模式；P99 基线 320 ms；
+输出要求：markdown 表格 + ms 单位。
+下一步：拟合慢请求分布并出报告。
+……（其后接未压缩的最近若干轮原文）</code></pre>
+<p>触发线 = (窗口 − 20k 输出预留) − 分级缓冲（13k/30k/50k 按窗口大小），预留值来自摘要输出的 p99.99 实测（17,387 token）；连续失败 3 次熔断。压缩后由 SessionMemory 游标记录"摘要覆盖到哪条消息"，下次增量压缩。</p>
+</div><div>
+<h3>③ 兜底与 ④ 手动的协作</h3>
+<pre><code>// ③ 只认 "prompt too long" 这一种错误；只试一次防死循环
+if (hasAttempted || aborted) return null
+try { return await compactConversation(..., true, ...) }
+catch { return null }          // 再失败交给上层提示用户
+
+// ④ /compact 调度链：
+//   无自定义指令→先试 session-memory 压缩（便宜）→成功即返回
+//   →reactive-only 模式→走 ③ →传统路径：先①减负再②摘要
+//   →收尾：传统压缩替换了全部旧消息，旧 UUID 不复存在，
+//     游标必须重置 setLastSummarizedMessageId(undefined)
+
+// 游标更新本身也有讲究：
+// Only sets it if the last message doesn't have tool calls
+// (to avoid orphaned tool_results)   ← 停在未决工具调用上
+//                                    会制造"有结果、无调用"的孤儿</code></pre>
+</div></div>
+<div class="ok"><b>可抄走的三条</b>：① 全量注入的记忆必须物理限容（双上限、截断回退条目边界、截断后告知）；② 检索层只传描述不传全文，且"允许空选"比"总能选出"更重要；③ 压缩按损失分级、从清工具输出开始——白名单 + 保留最近 N 条 + 缓存冷热分治，二十行代码解决一半的窗口爆炸。<b>四级不是四个孤立函数</b>：它们共享游标这类全局状态，一级的动作要为其他级收拾现场（如④重置游标）。</div>
+
+<h2>8 · Cline 主要代码（cline/cline @ main 2026-09-07，注释为讲解）</h2>
+
+<h3>4.1 条件规则：frontmatter <code>paths:</code> 的确定性门控 <span class="src">apps/vscode/src/core/context/instructions/user-instructions/rule-conditionals.ts:39-103</span></h3>
+<pre><code>// 规则文件头可写：
+// ---
+// paths:
+//   - "src/api/**"
+// ---
+// paths 指令（glob 匹配当前工作区路径，命中才激活这条规则）
+const evaluatePathsConditional = (frontmatterValue, context) =&gt; {
+  if (!isNonEmptyStringArray(frontmatterValue)) return { passed: true }
+  // 类型不对 → fail-open（忽略条件，规则照常生效）
+  const patterns = frontmatterValue.map(p =&gt; p.trim()).filter(Boolean)
+  if (patterns.length === 0) return { passed: false }
+  // ↑ 空数组 → fail-closed：这是用户"显式禁用规则"的合法写法
+  const candidatePaths = (context.paths || []).map(toPosix).filter(Boolean)
+  if (candidatePaths.length === 0) return { passed: false }
+  // ↑ 没有路径证据 → 路径限域规则一律不激活（保守）
+  const matchedPatterns = []
+  for (const pattern of patterns) {
+    const matcher = picomatch(pattern, { dot: true })
+    if (candidatePaths.some(c =&gt; matcher(c))) matchedPatterns.push(pattern)
+  }
+  return { passed: matchedPatterns.length &gt; 0, matched: matchedPatterns }
+}
+
+// 首轮激活辅助：从用户消息里启发式抽"像路径的 token"当证据
+// （先剔除代码块和 URL 防误报）—— extractPathLikeStrings(text)</code></pre>
+<div class="note">与 Claude Code 的对照是本报告最有意思的一点：<b>同一个"该不该带这条记忆"的问题</b>，Claude Code 交给小模型判断（语义灵活、有挑选成本），Cline 交给作者预声明的 glob 规则判断（零成本、完全可解释、可版本管理）。前者适合海量异构记忆，后者适合人工策展的规则库。</div>
+
+<h3>4.2 规则清单与开关同步 <span class="src">rule-helpers.ts:40-104 · cline-rules.ts:7-34</span></h3>
+<pre><code>export async function synchronizeRuleToggles(rulesDirectoryPath, currentToggles, ...) {
+  // 目录态：扫描 .clinerules/ 下所有规则文件，新文件默认开启 (true)，
+  // 文件已删的开关同步清理——toggle 状态与磁盘永远一致
+  if (isDir) {
+    for (const filePath of filePaths)
+      if (!(ruleFilePath in updatedToggles)) updatedToggles[ruleFilePath] = true
+    for (const togglePath in updatedToggles)
+      if (!existingRulePaths.has(togglePath)) delete updatedToggles[togglePath]
+  }
+  ...
+}
+
+// cline-rules.ts：本地规则扫描时排除子目录（各归各的体系）
+const updatedLocalToggles = await synchronizeRuleToggles(
+  localClineRulesFilePath, localClineRulesToggles, "", [
+    [".clinerules", "workflows"],
+    [".clinerules", "hooks"],
+    [".clinerules", "skills"],
+  ])
+// 规则正文加载（getRuleFilesTotalContentWithMetadata）：
+//   toggle 关 → 跳过；YAML 解析失败 → fail-open 原样保留 frontmatter 让 LLM 自己读；
+//   条件不命中 → 跳过；命中 → 以 "相对路径 + 正文" 形式拼进 instructions</code></pre>
+
+<h3>4.3 Auto Compact：SDK 化的摘要压缩（手动入口） <span class="src">apps/vscode/src/sdk/sdk-compaction.ts:22-127</span></h3>
+<pre><code>// 模型未声明上下文窗口时的保守回退预算（与 CLI 保持一致）
+const FALLBACK_MANUAL_COMPACTION_MAX_INPUT_TOKENS = 64_000
+
+const compact = createContextCompactionPrepareTurn({
+    providerConfig, providerId, modelId,
+    compaction: { ...input.config.compaction,
+      enabled: true },   // 手动压缩无视 auto 开关——用户明确要求就执行
+    telemetry, sessionId, // 发出 compaction_executed / compaction_skipped 事件
+  }, { mode: "manual" })
+
+const result = await compact({ messages, apiMessages: input.messages, ... })
+return {
+  compacted: true,
+  messages: result.messages,
+  compactionState: createSessionCompactionState({   // 压缩产物是 sidecar：
+    sourceMessages: input.messages,                 // 正式 transcript 不被替换，
+    compactedMessages: result.messages, ... }),     // 会话/恢复用压缩态，存档保持原文
+}
+// 文档口径（docs/features/auto-compact）：摘要保留技术细节/代码变更/决策；
+// 不支持摘要的模型回退"规则截断"；可经 checkpoint 回滚到压缩前</code></pre>
+
+<h3>4.4 独有组件：FileContextTracker 监听外部修改 <span class="src">apps/vscode/src/core/context/context-tracking/FileContextTracker.ts:24-100</span></h3>
+<pre><code>// 上下文新鲜度不靠模型自觉，靠文件系统监听：
+watcher = chokidar.watch(resolvedFilePath, {
+  atomic: true,                       // 兼容"临时文件+改名"式写入的编辑器
+  awaitWriteFinish: { stabilityThreshold: 100, pollInterval: 100 },
+})
+watcher.on("change", () =&gt; {
+  if (this.recentlyEditedByCline.has(filePath)) {
+    this.recentlyEditedByCline.delete(filePath)  // Cline 自己改的 → 无需提醒
+  } else {
+    this.recentlyModifiedFiles.add(filePath)     // 用户/外部改的 → 记为 stale
+    this.trackFileContext(filePath, "user_edited")
+    // → 之后提醒 Cline：改动前先重读该文件，避免基于过期内容做 diff 编辑
+  }
+})
+// 入口 trackFileContext(filePath, "read_tool"|"user_edited"|"cline_edited"|"file_mentioned")
+// ——工具读到、@提及、被编辑过的文件都会进入跟踪；条目带 active/stale 状态机</code></pre>
+
+<h2>9 · Memory Bank 专题：从原生功能退回"方法论"</h2>
+<div class="warn"><b>现状核对（2026-09-07，main 分支）</b>：Memory Bank 在 v3.13（2025-08）曾是原生功能；当前源码中已无专门实现（全仓库检索仅剩 <span class="src">docs/best-practices/memory-bank.mdx</span>）。它现在的形态是一套<b>文档方法论 + 可复制指令</b>：把 Memory Bank 指令放进 <code>.clinerules/memory-bank.md</code>，让模型按指令维护 6 个 markdown 文件（projectbrief / productContext / activeContext / systemPatterns / techContext / progress），配合"initialize / update memory bank"口令。官方推荐的分工：<b>Auto Compact 管例行的上下文续命，Memory Bank 管里程碑级的项目记忆沉淀</b>。</div>
+<div class="cols"><div>
+<h3>这个演化的含义</h3>
+<ul>
+<li>会话内记忆（压缩）<b>必须</b>框架做——模型自己无法在窗口耗尽时自救；</li>
+<li>跨会话记忆（文档）<b>可以</b>纯 prompt 做——只要文件结构约定清楚，模型读写文件即可；</li>
+<li>于是 Cline 把前者做进代码（Auto Compact），后者留给方法论（.clinerules + Memory Bank），这与 Claude Code 的取舍相反：CC 把跨会话记忆也做成了框架能力（memdir 挑选注入）。</li>
+</ul>
+</div><div>
+<h3>两家跨会话记忆的真实差距</h3>
+<table><tr><th></th><th>Claude Code</th><th>Cline</th></tr>
+<tr><td>自动携带</td><td>每次请求自动注入（双轨）</td><td>规则自动拼；Memory Bank 需口令触发读取</td></tr>
+<tr><td>按需挑选</td><td>小模型从描述清单挑选 ≤5</td><td>paths 条件规则（声明式）</td></tr>
+<tr><td>容量治理</td><td>200 行/25KB 硬上限 + 截断</td><td>无限（用户自律 + git 审查）</td></tr></table>
+</div></div>
+
+<h2>10 · 结论：一句话记住两家</h2>
+<div class="ok"><span class="tag-cc">Claude Code</span>：记忆是<b>框架的自动系统</b>——限容的入口文件永远在场，详细记忆由小模型按任务挑选，四级压缩兜底，用户几乎不用管。<br>
+<span class="tag-cl">Cline</span>：记忆是<b>用户的作品</b>——.clinerules 规则库进 git、逐文件开关、glob 条件限域；框架只负责两件硬事：把规则确定性拼进 prompt，以及在窗口耗尽时用摘要（或截断）续命，再用 checkpoint 和文件监听兜住"记错"与"过期"。<br>
+共同点：两边都不用数据库/向量库——<b>markdown 文件 + git 就是两家共同的记忆底座</b>；差异在"谁来决定带什么"（模型判断 vs 声明式规则）与"跨会话记忆是否框架化"（是 vs 方法论）。</div>
+
+<div class="sub" style="margin-top:30px">核对口径：Claude Code 引用全部来自本地 claude-code-src（行号已核）；Cline 引用来自 github.com/cline/cline main 分支 2026-09-07 快照（monorepo：apps/vscode + sdk）。Cline 侧文档结论参考 docs.cline.bot（Auto Compact / Memory Bank 页）。</div>
+
+</div></body></html>
