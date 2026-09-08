@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>外置智能体记忆：何时触发、如何召回 —— Hermes Agent × 主流方案（一页报告）</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: #fff; }
+  body {
+    font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+    color: #1a1f2e; font-size: 10.6px; line-height: 1.31;
+    width: 210mm; padding: 5mm 10mm 3mm;
+  }
+  .hd { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2.5px solid #0d47a1; padding-bottom: 2.5px; margin-bottom: 4px; }
+  .hd h1 { font-size: 15.5px; color: #0d47a1; letter-spacing: .2px; }
+  .hd .sub { font-size: 9.5px; color: #667; text-align: right; line-height: 1.35; }
+  h2 { font-size: 11.5px; color: #0d47a1; margin: 3px 0 1.5px; border-left: 4px solid #0d47a1; padding-left: 6px; }
+  h3 { font-size: 10.6px; color: #14418f; margin: 4px 0 1.5px; }
+  p, li { font-size: 10.6px; text-align: justify; }
+  ul { padding-left: 15px; }
+  li { margin-bottom: 1px; }
+  code { font-family: Consolas, "Courier New", monospace; font-size: 10px; background: #eef2f8; color: #0d47a1; padding: 0 3px; border-radius: 2px; }
+  .box { background: #f0f5fc; border: 1px solid #c5d5ec; border-radius: 4px; padding: 4px 7px; margin: 3px 0 2px; }
+  .box b.k { color: #0d47a1; }
+  .warn { background: #fff8ec; border: 1px solid #ecd9b0; }
+  table { width: 100%; border-collapse: collapse; margin: 2px 0; }
+  th { background: #0d47a1; color: #fff; font-size: 9.6px; padding: 2.5px 4px; text-align: left; font-weight: 600; }
+  td { font-size: 9.2px; padding: 2.2px 4px; border-bottom: 1px solid #dde5f0; vertical-align: top; line-height: 1.3; }
+  tr:nth-child(even) td { background: #f6f9fd; }
+  td b { color: #0d47a1; }
+  .flow { display: flex; align-items: stretch; gap: 3px; margin: 2.5px 0; }
+  .step { flex: 1; background: #f0f5fc; border: 1px solid #c5d5ec; border-radius: 4px; padding: 3px 5px; }
+  .step .t { font-size: 9.5px; color: #b35c00; font-weight: 700; }
+  .step .d { font-size: 9px; line-height: 1.3; }
+  .arrow { align-self: center; color: #0d47a1; font-size: 12px; font-weight: 700; }
+  .cols { display: flex; gap: 8px; }
+  .cols > div { flex: 1; }
+  .refs { margin-top: 4px; border-top: 1.5px solid #0d47a1; padding-top: 3px; }
+  .refs ul { list-style: none; }
+  .refs .cols2 { display: flex; gap: 5mm; } .refs .cols2 > ul { flex: 1; }
+  .refs li { font-size: 8px; color: #334; margin-bottom: 0.3px; line-height: 1.26; word-break: break-all; -webkit-column-break-inside: avoid; }
+  .refs a { color: #0d47a1; text-decoration: none; }
+  .tag { display: inline-block; background: #0d47a1; color: #fff; border-radius: 2px; font-size: 8.5px; padding: 0 4px; margin-right: 3px; vertical-align: 1px; }
+  .formula { font-family: Consolas, monospace; background: #eef2f8; padding: 1px 4px; border-radius: 2px; font-size: 9.8px; }
+</style>
+</head>
+<body>
+
+<div class="hd">
+  <h1>外置智能体记忆：何时触发、如何召回</h1>
+  <div class="sub">Hermes Agent（Nous Research）记忆架构 × 主流外置记忆方案 · 一页报告 · 2026-09-08 · 官方文档 + 学术论文 + 本地源码三重交叉验证</div>
+</div>
+
+<h2>0 · 先回答问题：Hermes Agent 的"外置向量库"是怎么回事？</h2>
+<div class="box warn">
+  <b class="k">纠偏：</b>Hermes Agent 的<b>内置记忆并不用向量库</b>——L1 是两个 Markdown 文件（<code>MEMORY.md</code> ≤2200 / <code>USER.md</code> ≤1375 字符，<code>tools/memory_tool.py:924</code>）；L2 会话搜索是 SQLite <b>FTS5 全文索引</b>（unicode61 + CJK trigram，<code>hermes_state_common.py:661</code>），BM25 取 top-3 会话再由辅助 LLM 摘要做"软重排"，官方概括为 <b>"SQLite FTS5 + LLM 摘要 + 文件级持久化"</b> <span class="tag">[1][2][3]</span>。
+  <b class="k">向量库确实存在，但是"外挂"的：</b>通过 <code>plugins/memory/</code> 下 8 个<b>记忆提供者</b>插件接入（mem0、supermemory、retaindb、hindsight、honcho、openviking、byterover、holographic），由 <code>MemoryManager</code> 强制<b>同一时间只激活一个</b>外部提供者，与内置记忆并行工作，内置写入会镜像同步给提供者 <span class="tag">[1][2]</span>。
+</div>
+
+<h2>1 · Hermes Agent 记忆栈（L0–L2）：触发时机与召回方式</h2>
+<table>
+  <tr><th style="width:8%">层</th><th style="width:20%">存储形态</th><th style="width:34%">何时触发（写入/注入）</th><th style="width:38%">何时召回、怎么召回</th></tr>
+  <tr><td><b>L0</b> 工作上下文</td><td>系统提示词内的冻结快照</td><td>会话开始时一次性装配（L1 快照 + 提供者块）；会话中不回改以<b>保住前缀 KV 缓存</b></td><td>全程常驻上下文，无需检索</td></tr>
+  <tr><td><b>L1</b> 持久记忆</td><td><code>MEMORY.md</code>/<code>USER.md</code>（原子写 + 注入扫描）</td><td>Agent 经 <code>memory_tool</code> <b>自主编辑</b>（添加/替换/移除），立即落盘</td><td>下次会话开始整体注入 L0，<b>不检索、全量注入</b></td></tr>
+  <tr><td><b>L1.5</b> 外部提供者</td><td>各提供者后端（向量库/图/云）</td><td>见下方共享时序 <span class="tag">[1][2]</span></td><td>每轮前后台 <code>prefetch</code> 预取注入；Agent 也可主动调提供者搜索工具</td></tr>
+  <tr><td><b>L2</b> 会话搜索</td><td>SQLite WAL + 双 FTS5 虚拟表（触发器同步，含工具调用参数）</td><td>写成本≈0：每条消息/工具调用由触发器自动入索引，无 embedding 开销</td><td><b>按需触发</b>：FTS5 MATCH + BM25 排序 → 排除会话谱系 → top-3 会话截断匹配段 → 辅助 LLM 针对查询做摘要式"软重排" <span class="tag">[2][3]</span></td></tr>
+</table>
+<div class="flow">
+  <div class="step"><div class="t">① 会话开始</div><div class="d"><code>system_prompt_block()</code> 提供者上下文注入系统提示词</div></div><div class="arrow">→</div>
+  <div class="step"><div class="t">② 每轮之前</div><div class="d"><code>prefetch(query)</code> 后台非阻塞预取相关记忆，以 <code>&lt;memory-context&gt;</code> 注入本轮用户消息</div></div><div class="arrow">→</div>
+  <div class="step"><div class="t">③ 每轮之后</div><div class="d"><code>sync_turn(user,asst)</code> 异步写入对话轮（部分提供者同时增量抽取）</div></div><div class="arrow">→</div>
+  <div class="step"><div class="t">④ 会话末 / 压缩前</div><div class="d"><code>on_session_end</code> / <code>on_pre_compress</code> 整段会话抽取为长期记忆</div></div>
+</div>
+<p style="font-size:9.2px;color:#445">提供者触发差异：Supermemory 每轮前 auto_recall / 每轮后 auto_capture / 每 50 轮更新 profile；Hindsight 用 auto_retain/auto_recall 开关；ByteRover 在压缩前抽取；Holographic 会话末 auto_extract 默认关；OpenViking 在 session commit 分 6 类抽取 <span class="tag">[1]</span>。</p>
+
+<h2>2 · 主流外置记忆系统：触发时机与召回算法对照</h2>
+<table>
+  <tr><th style="width:14%">系统</th><th style="width:20%">存储形态</th><th style="width:30%">写入何时触发</th><th style="width:16%">召回何时触发</th><th style="width:20%">召回算法</th></tr>
+  <tr><td><b>MemGPT / Letta</b> <span class="tag">[4][5]</span></td><td>main context（窗口内）+ external context：recall 存储（历史）+ archival 存储（向量库）</td><td><b>Agent 自主</b>：LLM 函数调用自写记忆；上下文 FIFO 溢出时系统自动<b>递归摘要</b>旧消息压入 recall 存储</td><td><b>Agentic 按需</b>：LLM 自己决定调用 <code>archival_memory_search</code> / <code>conversation_search</code></td><td>archival 为语义向量检索（按需查询、不能常驻）；core memory 常驻且可自编辑</td></tr>
+  <tr><td><b>Mem0</b> <span class="tag">[6]</span></td><td>向量库（dense embeddings，可选图变体 Mem0<sup>g</sup>）</td><td><b>每轮自动两阶段</b>：抽取（结合最近 m=10 条消息抽候选事实）→ 更新（向量检索 top-s=10 相似旧记忆，LLM tool-call 判定 ADD / UPDATE / DELETE / NOOP）</td><td><b>每次查询自动</b></td><td>问题嵌入 → 向量库相似度 top-k（可选 LLM 重排）→ 注入提示词</td></tr>
+  <tr><td><b>Zep / Graphiti</b> <span class="tag">[7]</span></td><td>Neo4j 时序知识图谱（双时间轴：事件时间 vs 摄取时间，矛盾边自动失效）</td><td><b>每条消息</b>作为一个 Episode 摄取：结合最近 n=4 条消息抽取实体/事实边，带参考时间戳</td><td><b>每次查询自动</b></td><td><b>混合检索</b>：余弦语义 + BM25 全文（Lucene）+ BFS 图遍历（可用最近 Episode 作种子）→ RRF / MMR / 交叉编码器重排 → top 边+节点（实验取 20 条边）</td></tr>
+  <tr><td><b>Generative Agents</b>（经典基线） <span class="tag">[8]</span></td><td>记忆流（事件流 + 嵌入向量）</td><td>每个观察/行动即时写入记忆流</td><td><b>每个决策点</b>（规划、是否反应、生成对话、反思）</td><td>三因子打分取 top-k：<span class="formula">score = α·recency + α·importance + α·relevance</span>（α 全为 1；recency=指数衰减 0.995/小时；importance=LLM 1–10 评分；relevance=嵌入余弦；min-max 归一）</td></tr>
+</table>
+
+<div class="cols">
+  <div>
+    <h3>范式 A · Agentic 自主触发（MemGPT/Letta）</h3>
+    <p style="font-size:9.7px">把记忆管理当<b>工具调用</b>交给模型：检索本身消耗一个决策，模型自主判断"上下文不够 → 搜记忆"。优点是精准省 token，缺点是依赖模型自觉，可能漏召回。LLM 像操作系统一样在主存/外存间<b>分页</b>（virtual context management），用中断机制交还控制流 <span class="tag">[4]</span>。</p>
+  </div>
+  <div>
+    <h3>范式 B · 自动管线触发（Mem0 / Zep / Hermes 提供者）</h3>
+    <p style="font-size:9.7px">记忆写入与召回<b>对模型透明</b>：每轮消息自动抽取+去重落库，每次查询自动向量/混合检索后注入提示词。延迟可控、不依赖模型自觉；代价是每轮固定多一次检索 + 抽取开销（Mem0 论文主打低延迟：92% 低于全上下文）<span class="tag">[6]</span>。</p>
+  </div>
+  <div>
+    <h3>范式 C · 决策点打分触发（Generative Agents）</h3>
+    <p style="font-size:9.7px">每个行动决策点全量检索，用 <b>recency × importance × relevance</b> 加权排序——"什么时候触发"退化为"每个决策都触发"，重心全在<b>排序函数</b>上。该三因子框架至今是记忆召回排序的默认起点 <span class="tag">[8]</span>。</p>
+  </div>
+</div>
+
+<div class="box">
+  <b class="k">结论：</b>"最主流"不是一个系统而是一个谱系——<b>越靠 LLM 自觉（Agentic）召回越省但可能漏；越靠自动管线（托管式）召回越稳但有固定开销</b>。工业界当前主流收敛在<b>范式 B</b>（Mem0/Zep 式"每轮自动写 + 每查询自动混合检索"，Hermes 外部提供者也走这条时序）；排序底座默认仍是 Generative Agents 三因子 <span class="tag">[1][6][7][8]</span>。Hermes 内置栈是成本优先的反例：FTS5 关键词召回 + LLM 摘要重排替代向量检索，语义泛化推迟到摘要阶段 <span class="tag">[2][3]</span>。
+</div>
+
+<div class="refs">
+  <b style="font-size:10px;color:#0d47a1">引用</b>
+  <div class="cols2"><ul><li>[1] Nous Research，《Hermes Agent Docs · Memory Providers》（官方文档：8 个提供者、唯一外部提供者限制、共享触发时序）— <a href="https://hermes-agent.nousresearch.com/docs/user-guide/features/memory-providers">hermes-agent.nousresearch.com/docs/user-guide/features/memory-providers</a></li>
+<li>[2] 本地源码验证（本仓库 <code>hermes-agent/</code>）：<code>agent/memory_provider.py</code>（ABC 生命周期：prefetch / sync_turn / on_session_end / on_pre_compress / 写入镜像）；<code>plugins/memory/</code>（8 个提供者）；<code>tools/memory_tool.py:924</code>（2200/1375 上限）；<code>hermes_state_common.py:661</code>（CJK trigram）</li>
+<li>[3] J. Huang，《Hermes Agent 记忆架构：从 L0 到 L2 的四层设计》（"不依赖向量数据库：SQLite FTS5 + LLM 摘要 + 文件级持久化"、软重排、KV 缓存冻结快照）— <a href="https://www.joyehuang.me/notes/0526-hermes-fts5-session-search">joyehuang.me/notes/0526-hermes-fts5-session-search</a></li>
+<li>[4] C. Packer et al., "MemGPT: Towards LLMs as Operating Systems", arXiv:2310.08560, 2023 — <a href="https://arxiv.org/abs/2310.08560">arxiv.org/abs/2310.08560</a></li>
+<li>[5] Letta Docs, "Archival Memory"（通用向量库；<code>archival_memory_search</code> 按需工具查询；conversation search 为自动）— <a href="https://docs.letta.com/v1-sdk/memory/archival-memory/">docs.letta.com/v1-sdk/memory/archival-memory</a></li></ul><ul><li>[6] P. Chhikara, D. Khant, S. Aryan, T. Singh, D. Yadav, "Mem0: Building Production-Ready AI Agents with Scalable Long-Term Memory", arXiv:2504.19413, 2025（两阶段抽取/更新：m=10、s=10、ADD/UPDATE/DELETE/NOOP）— <a href="https://arxiv.org/abs/2504.19413">arxiv.org/abs/2504.19413</a></li>
+<li>[7] P. Rasmussen et al., "Zep: A Temporal Knowledge Graph Architecture for Agent Memory", arXiv:2501.13956, 2025（Episode 摄取 n=4；φcos + φbm25 + φbfs；RRF/MMR/交叉编码器重排）— <a href="https://arxiv.org/abs/2501.13956">arxiv.org/abs/2501.13956</a></li>
+<li>[8] J. S. Park et al., "Generative Agents: Interactive Simulacra of Human Behavior", arXiv:2304.03442, 2023（检索于每个决策点；α 全为 1；衰减 0.995；min-max 归一）— <a href="https://arxiv.org/abs/2304.03442">arxiv.org/abs/2304.03442</a></li>
+<li>[9] ForceInjection, "Hermes Agent 内存管理架构：源码解析"（四层栈、MEMORY.md/USER.md 上限、冻结快照与缓存经济性）— <a href="https://github.com/ForceInjection/AI-fundamentals/blob/main/08_agentic_system/memory/research/systems/hermes-agent-memory-management.md">github.com/ForceInjection/AI-fundamentals · hermes-agent-memory-management.md</a></li></ul></div>
+</div>
+
+</body>
+</html>
